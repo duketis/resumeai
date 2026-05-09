@@ -1,0 +1,93 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.json.secret
+client_secret*.json
+credentials.json
+token.json
+
+# resumeai runtime artifacts (never commit)
+*.db
+*.db-shm
+*.db-wal
+resumeai.db*
+data/
+logs/
+*.log
+~/.resumeai/
+
+# Private workspace — interview/decision/architecture material.
+# This directory holds ADRs, build plans, and decision rationale that
+# is intentionally NOT public. Never tracked.
+_private/
+
+# UserContext — Jonathan's resume content, JDs, generated outputs.
+# Holds personal/PII material that the tailoring agent reads at
+# runtime. Never tracked.
+UserContext/
+
+# Local-only docs scratch
+docs/RUN_LOG.md
+docs/_scratch/
+
+# Build / packaging
+*.spec
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Frontend (added when scaffolded in Phase 7)
+frontend/node_modules/
+frontend/dist/
+resumeai/api/static/
+
+# Session-context anchor — local-only, never committed.
+CLAUDE.md
