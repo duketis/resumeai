@@ -1,0 +1,262 @@
+"""Loader tests against both ad-hoc tmp_path layouts and the committed sample."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from resumeai.context.loader import ContextLoadError, load_user_context
+
+# -- happy path against the committed sample ---------------------------------
+
+
+def test_loads_committed_sample_context(sample_context_root: Path) -> None:
+    ctx = load_user_context(sample_context_root)
+
+    assert ctx.resume is not None
+    assert ctx.resume.name == "Alex Sample"
+    assert ctx.resume.contact.email == "alex.sample@example.com"
+    assert "Python" in ctx.resume.skills
+    assert ctx.resume.education[0].institution == "Sample University"
+    assert ctx.resume.certifications == ("AWS Solutions Architect Associate",)
+
+    # Two work-history entries, ordered most-recent first by end date.
+    titles = [entry.company for entry in ctx.work_history]
+    assert titles == ["Acme Corp", "Beta Inc"]
+    acme = ctx.work_history[0]
+    assert acme.title == "Senior Software Engineer"
+    assert "FastAPI" in acme.technologies
+    assert acme.summary.startswith("Built and ran the data-ingestion platform")
+    assert len(acme.bullets) == 3
+    assert any("deduplication" in b for b in acme.bullets)
+
+    # Git audit
+    assert len(ctx.git_audit) == 1
+    audit = ctx.git_audit[0]
+    assert audit.repo == "acme/platform"
+    assert audit.role == "Senior Software Engineer"
+    assert "1,200 commits" in audit.summary
+
+    # Cover letter
+    assert len(ctx.cover_letters) == 1
+    cover = ctx.cover_letters[0]
+    assert cover.role == "Senior Software Engineer"
+    assert cover.company == "Acme Corp"
+    assert "high-trust team" in cover.body
+
+
+# -- empty / missing tolerance ----------------------------------------------
+
+
+def test_returns_empty_context_when_root_missing(tmp_path: Path) -> None:
+    ctx = load_user_context(tmp_path / "nope")
+    assert ctx.is_empty()
+
+
+def test_returns_empty_context_when_root_is_a_file(tmp_path: Path) -> None:
+    f = tmp_path / "actually-a-file"
+    f.write_text("hi")
+    ctx = load_user_context(f)
+    assert ctx.is_empty()
+
+
+def test_partial_tree_loads_what_exists(tmp_path: Path) -> None:
+    """Only resume.yaml present — work_history/, git_audit/, cover_letters/
+    are all missing. Loader returns the resume and empty tuples."""
+    (tmp_path / "resume.yaml").write_text("name: Alex\ncontact:\n  email: a@example.com\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.resume is not None
+    assert ctx.work_history == ()
+    assert ctx.git_audit == ()
+    assert ctx.cover_letters == ()
+
+
+# -- resume.yaml error handling ---------------------------------------------
+
+
+def test_raises_when_resume_yaml_top_level_is_not_a_mapping(tmp_path: Path) -> None:
+    (tmp_path / "resume.yaml").write_text("- 1\n- 2\n")
+    with pytest.raises(ContextLoadError, match="YAML mapping"):
+        load_user_context(tmp_path)
+
+
+def test_raises_on_invalid_resume_yaml(tmp_path: Path) -> None:
+    (tmp_path / "resume.yaml").write_text("name: [unclosed\n")
+    with pytest.raises(ContextLoadError, match="invalid YAML"):
+        load_user_context(tmp_path)
+
+
+def test_raises_on_resume_validation_error(tmp_path: Path) -> None:
+    (tmp_path / "resume.yaml").write_text("name: ''\ncontact:\n  email: x\n")
+    with pytest.raises(ContextLoadError):
+        load_user_context(tmp_path)
+
+
+# -- work history file handling ---------------------------------------------
+
+
+def test_work_history_orders_most_recent_first(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "old.md").write_text(
+        "---\ntitle: Eng\ncompany: Old\nstart: 2018-01\nend: 2020-01\n---\n\nbody\n"
+    )
+    (wh / "new.md").write_text(
+        "---\ntitle: Eng\ncompany: New\nstart: 2020-02\nend: 2024-01\n---\n\nbody\n"
+    )
+    (wh / "current.md").write_text(
+        "---\ntitle: Eng\ncompany: Current\nstart: 2024-02\n---\n\nbody\n"
+    )
+
+    ctx = load_user_context(tmp_path)
+
+    assert [e.company for e in ctx.work_history] == ["Current", "New", "Old"]
+
+
+def test_work_history_extracts_summary_paragraph(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text(
+        "---\ntitle: Eng\ncompany: Acme\n---\n\n"
+        "# heading shouldn't count\n\n"
+        "Summary paragraph that should be picked up.\n\n"
+        "Second paragraph not picked up.\n\n"
+        "- bullet\n"
+    )
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].summary == "Summary paragraph that should be picked up."
+
+
+def test_work_history_summary_skips_empty_paragraphs(tmp_path: Path) -> None:
+    """Bodies with extra blank lines split into empty paragraphs which the
+    summary extractor must skip past, not return."""
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ntitle: Eng\ncompany: Acme\n---\n\n\n\nReal summary here.\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].summary == "Real summary here."
+
+
+def test_work_history_summary_blank_when_only_bullets(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ntitle: Eng\ncompany: Acme\n---\n\n- bullet 1\n- bullet 2\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].summary == ""
+
+
+def test_work_history_extracts_all_bullet_styles(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text(
+        "---\ntitle: Eng\ncompany: Acme\n---\n\n- dash bullet\n* star bullet\n+ plus bullet\n"
+    )
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].bullets == ("dash bullet", "star bullet", "plus bullet")
+
+
+def test_work_history_raises_on_missing_required_frontmatter(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ncompany: Acme\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="title"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_raises_on_unclosed_frontmatter(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ntitle: Eng\ncompany: Acme\nno close ever\n")
+    with pytest.raises(ContextLoadError, match="frontmatter opening"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_treats_no_frontmatter_as_empty_metadata(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("Just a body, no frontmatter")
+    with pytest.raises(ContextLoadError, match="title"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_raises_on_non_mapping_frontmatter(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\n- not\n- a\n- mapping\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="must be a YAML mapping"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_handles_empty_frontmatter_block(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\n\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="title"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_raises_on_invalid_frontmatter_yaml(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ntitle: [unclosed\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="invalid frontmatter YAML"):
+        load_user_context(tmp_path)
+
+
+def test_work_history_coerces_non_string_optional_metadata(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text("---\ntitle: Eng\ncompany: Acme\nstart: 2022\n---\n\nbody\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].start == "2022"
+
+
+def test_work_history_handles_missing_technologies_list(tmp_path: Path) -> None:
+    wh = tmp_path / "work_history"
+    wh.mkdir()
+    (wh / "x.md").write_text(
+        "---\ntitle: Eng\ncompany: Acme\ntechnologies: not-a-list\n---\n\nbody\n"
+    )
+    ctx = load_user_context(tmp_path)
+    assert ctx.work_history[0].technologies == ()
+
+
+# -- git audit + cover letters ----------------------------------------------
+
+
+def test_git_audit_skips_non_markdown_files(tmp_path: Path) -> None:
+    ga = tmp_path / "git_audit"
+    ga.mkdir()
+    (ga / "x.md").write_text("---\nrepo: acme/x\n---\n\nsummary\n")
+    (ga / "ignore.txt").write_text("not a markdown file")
+    ctx = load_user_context(tmp_path)
+    assert len(ctx.git_audit) == 1
+    assert ctx.git_audit[0].repo == "acme/x"
+
+
+def test_git_audit_raises_on_missing_repo_field(tmp_path: Path) -> None:
+    ga = tmp_path / "git_audit"
+    ga.mkdir()
+    (ga / "x.md").write_text("---\nrole: Engineer\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="repo"):
+        load_user_context(tmp_path)
+
+
+def test_cover_letter_body_strips_surrounding_whitespace(tmp_path: Path) -> None:
+    cl = tmp_path / "cover_letters"
+    cl.mkdir()
+    (cl / "acme.md").write_text("---\nrole: Eng\ncompany: Acme\n---\n\n  Hi team,\n\nBody.\n\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.cover_letters[0].body.startswith("Hi team,")
+    assert ctx.cover_letters[0].body.endswith("Body.")
+
+
+def test_cover_letter_without_frontmatter_keeps_full_body(tmp_path: Path) -> None:
+    cl = tmp_path / "cover_letters"
+    cl.mkdir()
+    (cl / "x.md").write_text("Just text, no frontmatter")
+    ctx = load_user_context(tmp_path)
+    assert ctx.cover_letters[0].body == "Just text, no frontmatter"
+    assert ctx.cover_letters[0].role is None
+    assert ctx.cover_letters[0].company is None
