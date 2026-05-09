@@ -16,7 +16,7 @@ Given a job description (text or URL) and a master Google Docs resume template, 
 
 ## Status
 
-**v0.2.0 — Phase 1 shipped.** Google Docs + OAuth/Settings layer landed. Web-based onboarding wizard, `client_secret.json` paste, Google consent flow, encrypted-on-disk SQLite settings store, typed `DocsClient` wrapper, structural template reader, copy helper. **132 tests, 100% line + branch coverage, CI green.** End-to-end tailoring pipeline (JD parser → context store → tailoring agent → renderer) lands in Phases 2–5; React frontend in Phase 7; jobai integration in Phase 8. See `_private/BUILD_PLAN.md` (gitignored — interview material) for the full plan.
+**v0.3.0 — Phase 2 shipped.** Adds the JD ingestion + structured-extraction layer on top of the v0.2.0 Settings/OAuth/Docs surface. Given a JD URL or text, resumeai now produces a typed `JobRequirements` (title, company, location, role type, seniority, employment + remote type, required + nice-to-have skills, must-haves, employer vocabulary) by combining a single httpx fetch + HTML cleaner, deterministic regex extractors for the closed-enum fields, and a single `claude` CLI subprocess call for the open-ended fields. The end-to-end tailoring pipeline (context store → tailoring agent → renderer) lands in Phases 3–5; React frontend in Phase 7; jobai integration in Phase 8. **227 tests, 100% line + branch coverage, CI green.** See `_private/BUILD_PLAN.md` (gitignored — interview material) for the full plan.
 
 Run `resumeai serve` and open `http://localhost:7842/` to follow the in-app onboarding wizard for the one-time Google Cloud OAuth client setup.
 
