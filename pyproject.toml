@@ -144,10 +144,16 @@ pretty = true
 files = ["resumeai", "tests"]
 exclude = ["_private/", "UserContext/", "build/", "dist/"]
 
-# NOTE: per-module ignore_missing_imports overrides are added in Phase 1+
-# as each external library actually gets imported (selectolax, googleapiclient,
-# google_auth_oauthlib, google.auth). Keeping the list empty here so
-# warn_unused_configs stays clean.
+[[tool.mypy.overrides]]
+# Google API client packages don't ship py.typed markers / type stubs.
+module = ["googleapiclient.*", "google.oauth2.*", "google.auth.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Calls into google.oauth2.credentials.Credentials() are untyped at the
+# library level. Suppress the strict-mode "no-untyped-call" only there.
+module = ["resumeai.docs.client"]
+disallow_untyped_calls = false
 
 # ---------------------------------------------------------------------------
 # pytest — testing
