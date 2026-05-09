@@ -40,6 +40,9 @@ dependencies = [
   "mcp>=1.0",
   "sse-starlette>=2.0",
   "pyyaml>=6.0",
+  "jinja2>=3.1",
+  "python-multipart>=0.0.9",
+  "itsdangerous>=2.1",
 ]
 
 [project.optional-dependencies]
@@ -109,7 +112,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "PLR2004", "ANN", "PLR0915"]
+# S105/S106/S107: test fixtures use obviously fake credential strings;
+# the security check is high-noise on test code.
+"tests/**/*.py" = ["S101", "PLR2004", "ANN", "PLR0915", "S105", "S106", "S107"]
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["typer.Option", "typer.Argument"]
