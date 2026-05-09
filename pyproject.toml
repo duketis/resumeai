@@ -116,7 +116,23 @@ ignore = [
 "tests/**/*.py" = ["S101", "PLR2004", "ANN", "PLR0915", "S105", "S106", "S107"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["typer.Option", "typer.Argument"]
+# Typer's `param: T = typer.Option(...)` and FastAPI's
+# `param: T = Depends(...)` / `Form(...)` are the idiomatic patterns; the
+# call returns a marker object, not a stateful value, so B008's concerns
+# do not apply.
+extend-immutable-calls = [
+  "typer.Option",
+  "typer.Argument",
+  "fastapi.Depends",
+  "fastapi.Form",
+  "fastapi.File",
+  "fastapi.Body",
+  "fastapi.Query",
+  "fastapi.Header",
+  "fastapi.Path",
+  "fastapi.Cookie",
+  "fastapi.Security",
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

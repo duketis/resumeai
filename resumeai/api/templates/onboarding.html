@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Onboarding — resumeai{% endblock %}
+{% block content %}
+
+<h2>One-time setup: create a Google OAuth client</h2>
+
+<p>Resumeai talks to Google Docs and Drive on your behalf, so it needs an OAuth client tied to <em>your</em> Google Cloud project. This is a 5-minute, one-time setup that Google requires for any app that talks to your Drive — there is no way to skip it.</p>
+
+<ol class="steps">
+  <li>
+    Go to <a href="https://console.cloud.google.com/projectcreate" target="_blank" rel="noopener">Google Cloud Console → Create project ↗</a>. Name it anything (e.g. <code>resumeai</code>) and click <strong>Create</strong>.
+  </li>
+  <li>
+    Open <a href="https://console.cloud.google.com/apis/library/docs.googleapis.com" target="_blank" rel="noopener">APIs &amp; Services → Google Docs API ↗</a> and click <strong>Enable</strong>. Then enable the <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener">Google Drive API ↗</a> the same way.
+  </li>
+  <li>
+    Go to <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" rel="noopener">OAuth consent screen ↗</a>:
+    <ul>
+      <li>User type: <strong>External</strong> → Create.</li>
+      <li>App name: <code>resumeai</code>. Support email + developer email: your email.</li>
+      <li>Scopes: skip (we'll request what we need at runtime).</li>
+      <li>Test users: add your own Google account (the one whose Docs you'll be tailoring).</li>
+    </ul>
+  </li>
+  <li>
+    Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener">Credentials ↗</a> → <strong>Create credentials → OAuth client ID</strong>:
+    <ul>
+      <li>Application type: <strong>Web application</strong>.</li>
+      <li>Name: <code>resumeai local</code>.</li>
+      <li>Authorised redirect URIs: <code>http://localhost:7842/api/auth/google/callback</code></li>
+      <li>Click <strong>Create</strong>. A dialog appears with your client ID and secret.</li>
+    </ul>
+  </li>
+  <li>
+    Click <strong>Download JSON</strong>. You'll get a file called <code>client_secret_…json</code>. Open it in a text editor.
+  </li>
+  <li>
+    Head back to <a href="/settings">Settings</a> and paste the entire file contents into the OAuth client field.
+  </li>
+</ol>
+
+<p><a class="button" href="/settings">Back to Settings</a></p>
+
+{% endblock %}

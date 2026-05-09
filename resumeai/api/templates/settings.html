@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Settings — resumeai{% endblock %}
+{% block content %}
+
+<h2>1. OAuth client</h2>
+{% if oauth_client_configured %}
+  <p class="status-good">An OAuth client is configured (project <code>{{ oauth_client.project_id or "—" }}</code>).</p>
+  <details>
+    <summary>Replace the OAuth client</summary>
+    <form method="post" action="/settings/oauth-client" class="card">
+      <p>Paste a fresh <code>client_secret.json</code> from Google Cloud Console:</p>
+      <textarea name="client_json" required placeholder='{"web": { "client_id": "...", "client_secret": "...", ... }}'></textarea>
+      <p><button type="submit">Replace OAuth client</button></p>
+    </form>
+  </details>
+{% else %}
+  <p class="status-warn">No OAuth client yet.</p>
+  <p>You'll need to create one in Google Cloud Console first — see the <a href="/onboarding">onboarding wizard</a>. Once you have <code>client_secret.json</code>, paste it below.</p>
+  <form method="post" action="/settings/oauth-client" class="card">
+    <textarea name="client_json" required placeholder='{"web": { "client_id": "...", "client_secret": "...", ... }}'></textarea>
+    <p><button type="submit">Save OAuth client</button></p>
+  </form>
+{% endif %}
+
+<h2>2. Google account</h2>
+{% if credentials %}
+  <p class="status-good">Connected as <strong>{{ credentials.user_email }}</strong>.</p>
+  <form method="post" action="/api/auth/google/disconnect">
+    <button type="submit" class="danger">Disconnect Google account</button>
+  </form>
+{% elif oauth_client_configured %}
+  <p>OAuth client is set; not connected to a Google account yet.</p>
+  <a class="button" href="/api/auth/google/start">Connect Google</a>
+{% else %}
+  <p class="status-warn">Save an OAuth client first.</p>
+{% endif %}
+
+<h2>3. Resume template</h2>
+{% if template %}
+  <p class="status-good">Master template registered: <code>{{ template.doc_id }}</code></p>
+  <p><a href="https://docs.google.com/document/d/{{ template.doc_id }}/edit" target="_blank" rel="noopener">Open in Google Docs ↗</a></p>
+{% else %}
+  <p>Paste the URL of the Google Doc you want to use as your master resume template. Resumeai will copy this doc on every tailoring run — your master is never written to.</p>
+{% endif %}
+<form method="post" action="/settings/template" class="card">
+  <input type="text" name="template_url" required placeholder="https://docs.google.com/document/d/.../edit"
+    {% if template %}value="https://docs.google.com/document/d/{{ template.doc_id }}/edit"{% endif %}>
+  <p><button type="submit">{% if template %}Update template{% else %}Save template{% endif %}</button></p>
+</form>
+
+{% endblock %}
