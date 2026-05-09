@@ -16,7 +16,9 @@ Given a job description (text or URL) and a master Google Docs resume template, 
 
 ## Status
 
-**v0.1.0 — Phase 0 scaffolding.** Repo, tooling, CI, ARCHITECTURE log, and BUILD_PLAN landed. End-to-end pipeline not yet wired. See `_private/BUILD_PLAN.md` (gitignored — interview material) for phased plan; expect rapid v0.x releases as each phase ships.
+**v0.2.0 — Phase 1 shipped.** Google Docs + OAuth/Settings layer landed. Web-based onboarding wizard, `client_secret.json` paste, Google consent flow, encrypted-on-disk SQLite settings store, typed `DocsClient` wrapper, structural template reader, copy helper. **132 tests, 100% line + branch coverage, CI green.** End-to-end tailoring pipeline (JD parser → context store → tailoring agent → renderer) lands in Phases 2–5; React frontend in Phase 7; jobai integration in Phase 8. See `_private/BUILD_PLAN.md` (gitignored — interview material) for the full plan.
+
+Run `resumeai serve` and open `http://localhost:7842/` to follow the in-app onboarding wizard for the one-time Google Cloud OAuth client setup.
 
 ## Architecture (high level)
 
