@@ -1,9 +1,9 @@
 """FastAPI dependency providers.
 
-Routes ask for ``SettingsStore`` / ``OAuthService`` via ``Depends(...)``;
-this file is the single place that pulls them off ``request.app.state``.
-The app factory (``app.py``) is the only thing that puts them there, which
-keeps the wiring pinpointable.
+Routes ask for app singletons via ``Depends(...)``; this file is the single
+place that pulls them off ``request.app.state``. The app factory
+(``app.py``) is the only thing that puts them there, which keeps the
+wiring pinpointable.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from fastapi import Request
 
 if TYPE_CHECKING:
     from resumeai.auth.google_oauth import OAuthService
+    from resumeai.runs.orchestrator import TailoringOrchestrator
+    from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
 
 
@@ -24,6 +26,8 @@ class AppState:
 
     settings_store: SettingsStore
     oauth_service: OAuthService
+    runs_store: RunsStore
+    orchestrator: TailoringOrchestrator
 
 
 def get_app_state(request: Request) -> AppState:
@@ -37,3 +41,11 @@ def get_settings_store(request: Request) -> SettingsStore:
 
 def get_oauth_service(request: Request) -> OAuthService:
     return get_app_state(request).oauth_service
+
+
+def get_runs_store(request: Request) -> RunsStore:
+    return get_app_state(request).runs_store
+
+
+def get_orchestrator(request: Request) -> TailoringOrchestrator:
+    return get_app_state(request).orchestrator

@@ -1,7 +1,9 @@
 """Shared fixtures for API route tests.
 
 - ``store``: an :class:`InMemorySettingsStore` so tests don't touch SQLite.
+- ``runs``: an :class:`InMemoryRunsStore` for the same reason.
 - ``oauth_service``: a :class:`FakeOAuthService` with scripted responses.
+- ``llm``: a :class:`FakeLLMClient` so the orchestrator never spawns ``claude``.
 - ``client``: a FastAPI ``TestClient`` for the app wired with the above.
 """
 
@@ -16,6 +18,10 @@ from fastapi.testclient import TestClient
 
 from resumeai.api.app import create_app
 from resumeai.auth.google_oauth import OAuthError
+from resumeai.docs.client import FakeDocsClient
+from resumeai.llm.client import FakeLLMClient
+from resumeai.runs.orchestrator import TailoringOrchestrator
+from resumeai.runs.store import InMemoryRunsStore
 from resumeai.settings.models import GoogleCredentials, OAuthClient
 from resumeai.settings.store import InMemorySettingsStore
 
@@ -83,13 +89,55 @@ def store() -> InMemorySettingsStore:
 
 
 @pytest.fixture
+def runs() -> InMemoryRunsStore:
+    return InMemoryRunsStore()
+
+
+@pytest.fixture
 def oauth_service() -> FakeOAuthService:
     return FakeOAuthService()
 
 
 @pytest.fixture
-def client(store: InMemorySettingsStore, oauth_service: FakeOAuthService) -> Iterator[TestClient]:
-    app = create_app(settings_store=store, oauth_service=oauth_service)
+def llm() -> FakeLLMClient:
+    return FakeLLMClient(default_response="{}")
+
+
+@pytest.fixture
+def docs_client() -> FakeDocsClient:
+    return FakeDocsClient()
+
+
+@pytest.fixture
+def orchestrator(
+    store: InMemorySettingsStore,
+    runs: InMemoryRunsStore,
+    llm: FakeLLMClient,
+    docs_client: FakeDocsClient,
+) -> TailoringOrchestrator:
+    return TailoringOrchestrator(
+        runs_store=runs,
+        settings_store=store,
+        llm_client=llm,
+        docs_client_factory=lambda _c: docs_client,
+    )
+
+
+@pytest.fixture
+def client(
+    store: InMemorySettingsStore,
+    runs: InMemoryRunsStore,
+    oauth_service: FakeOAuthService,
+    llm: FakeLLMClient,
+    orchestrator: TailoringOrchestrator,
+) -> Iterator[TestClient]:
+    app = create_app(
+        settings_store=store,
+        oauth_service=oauth_service,
+        runs_store=runs,
+        llm_client=llm,
+        orchestrator=orchestrator,
+    )
     with TestClient(app) as test_client:
         yield test_client
 

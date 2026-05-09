@@ -59,16 +59,25 @@ def test_factory_falls_back_to_real_implementations_when_omitted(
     tmp_path: object,
     monkeypatch: object,
 ) -> None:
-    """Smoke-test the production default path: SqliteSettingsStore + GoogleOAuthService."""
+    """Production defaults are wired: settings + oauth + runs + LLM + orchestrator."""
+    import resumeai.runs.store as runs_store_module  # noqa: PLC0415
     import resumeai.settings.store as store_module  # noqa: PLC0415
     from resumeai.auth.google_oauth import GoogleOAuthService  # noqa: PLC0415
+    from resumeai.llm.client import ClaudeCliClient  # noqa: PLC0415
+    from resumeai.runs.orchestrator import TailoringOrchestrator  # noqa: PLC0415
+    from resumeai.runs.store import SqliteRunsStore  # noqa: PLC0415
     from resumeai.settings.store import SqliteSettingsStore  # noqa: PLC0415
 
-    # Point the SQLite store at a tmp file to keep the user's real DB pristine.
+    # Point both SQLite stores at tmp files so the user's real DB is untouched.
     monkeypatch.setattr(  # type: ignore[attr-defined]
         store_module,
         "DEFAULT_DB_PATH",
-        tmp_path / "resumeai.db",  # type: ignore[operator]
+        tmp_path / "settings.db",  # type: ignore[operator]
+    )
+    monkeypatch.setattr(  # type: ignore[attr-defined]
+        runs_store_module,
+        "DEFAULT_DB_PATH",
+        tmp_path / "runs.db",  # type: ignore[operator]
     )
 
     app = create_app()
@@ -76,3 +85,7 @@ def test_factory_falls_back_to_real_implementations_when_omitted(
     state = app.state.app_state
     assert isinstance(state.settings_store, SqliteSettingsStore)
     assert isinstance(state.oauth_service, GoogleOAuthService)
+    assert isinstance(state.runs_store, SqliteRunsStore)
+    assert isinstance(state.orchestrator, TailoringOrchestrator)
+    # The orchestrator should default to the production LLM client too.
+    assert isinstance(state.orchestrator._llm, ClaudeCliClient)
