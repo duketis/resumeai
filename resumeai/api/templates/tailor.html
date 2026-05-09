@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Tailor a resume — resumeai{% endblock %}
+{% block content %}
+
+<h2>Tailor a resume</h2>
+
+<p>Paste a job description URL or the JD text directly. resumeai will fetch + parse it, match it against your <a href="/settings">registered context</a>, and write a tailored copy of your master template into a new Google Doc.</p>
+
+<form method="post" action="/tailor" class="card">
+  <p><strong>Job description URL</strong> (we'll fetch it):</p>
+  <input type="text" name="jd_url" placeholder="https://boards.greenhouse.io/acme/jobs/123">
+
+  <p style="margin-top: 1.4em;"><strong>OR paste the JD text directly:</strong></p>
+  <textarea name="jd_text" placeholder="Paste the full job description here..."></textarea>
+
+  <p style="margin-top: 1.4em;"><strong>Template doc ID</strong> (optional — defaults to the one in <a href="/settings">Settings</a>):</p>
+  <input type="text" name="template_doc_id" placeholder="leave blank to use the default">
+
+  <p><button type="submit">Tailor resume</button></p>
+</form>
+
+<p><a href="/runs">View recent runs →</a></p>
+
+{% endblock %}

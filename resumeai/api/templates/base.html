@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{% block title %}resumeai{% endblock %}</title>
+  {% block extra_head %}{% endblock %}
   <style>
     :root {
       --fg: #1a1a1a;
@@ -97,6 +98,8 @@
     <h1>resumeai</h1>
     <p class="tagline">AI-driven resume tailoring, powered by your master Google Doc.</p>
     <nav class="nav">
+      <a href="/tailor">Tailor</a>
+      <a href="/runs">Runs</a>
       <a href="/settings">Settings</a>
       <a href="/onboarding">Onboarding</a>
     </nav>

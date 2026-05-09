@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Run {{ run.id }} — resumeai{% endblock %}
+{% block extra_head %}
+{% if auto_refresh %}<meta http-equiv="refresh" content="2">{% endif %}
+{% endblock %}
+{% block content %}
+
+<h2>Run <code>{{ run.id }}</code></h2>
+
+<div class="card">
+  <p>
+    <strong>Status:</strong>
+    {% if run.status.value == 'succeeded' %}
+      <span class="status-good">{{ run.status.value }}</span>
+    {% elif run.status.value == 'failed' %}
+      <span class="status-warn">{{ run.status.value }}</span>
+    {% else %}
+      <span>{{ run.status.value }}</span> <em style="color: var(--muted);">(refreshes every 2s)</em>
+    {% endif %}
+  </p>
+  {% if run.detail %}<p><strong>Detail:</strong> {{ run.detail }}</p>{% endif %}
+  {% if run.error %}<p class="status-warn"><strong>Error:</strong> <code>{{ run.error }}</code></p>{% endif %}
+  <p style="color: var(--muted); font-size: 0.9em;">
+    Created {{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC ·
+    Updated {{ run.updated_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+  </p>
+</div>
+
+<h2>Request</h2>
+<div class="card">
+  {% if run.request.jd_url %}<p><strong>JD URL:</strong> <a href="{{ run.request.jd_url }}" target="_blank" rel="noopener">{{ run.request.jd_url }}</a></p>{% endif %}
+  {% if run.request.jd_text %}<p><strong>JD text:</strong></p><pre style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ run.request.jd_text }}</pre>{% endif %}
+  {% if run.request.template_doc_id %}<p><strong>Template doc ID:</strong> <code>{{ run.request.template_doc_id }}</code></p>{% endif %}
+</div>
+
+{% if run.requirements %}
+<h2>Extracted requirements</h2>
+<div class="card">
+  <p><strong>{{ run.requirements.title }}</strong>{% if run.requirements.company %} @ {{ run.requirements.company }}{% endif %}</p>
+  {% if run.requirements.location %}<p>Location: {{ run.requirements.location }}</p>{% endif %}
+  <p>Role: {{ run.requirements.role_type.value }} · Seniority: {{ run.requirements.seniority.value }} · Remote: {{ run.requirements.remote_type.value }}</p>
+  {% if run.requirements.required_skills %}
+    <p><strong>Required:</strong> {{ run.requirements.required_skills | join(', ') }}</p>
+  {% endif %}
+  {% if run.requirements.must_haves %}
+    <p><strong>Must-haves:</strong> {{ run.requirements.must_haves | join(', ') }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if run.result %}
+<h2>Result</h2>
+<div class="card">
+  <p><strong>Tailored doc:</strong> <a href="{{ run.result.doc_url }}" target="_blank" rel="noopener">{{ run.result.doc_url }}</a></p>
+  <p><strong>PDF:</strong> {{ run.result.pdf_bytes | length }} bytes</p>
+  <h3>Section diffs</h3>
+  <ul>
+    {% for diff in run.result.diffs %}
+      <li>
+        <strong>{{ diff.kind }}</strong>:
+        {% if diff.status.value == 'replaced' %}
+          replaced ({{ diff.before_chars }} → {{ diff.after_chars }} chars)
+        {% else %}
+          {{ diff.status.value }}
+        {% endif %}
+        {% if diff.heading %} — heading <code>{{ diff.heading }}</code>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% if run.tailored %}
+<h2>Tailoring rationale</h2>
+<div class="card">
+  <p>{{ run.tailored.rationale }}</p>
+</div>
+{% endif %}
+{% endif %}
+
+<p><a class="button secondary" href="/runs">← All runs</a> <a class="button" href="/tailor">New run</a></p>
+
+{% endblock %}

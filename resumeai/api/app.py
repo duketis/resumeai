@@ -15,6 +15,7 @@ from resumeai import __version__
 from resumeai.api.deps import AppState
 from resumeai.api.routes import oauth as oauth_routes
 from resumeai.api.routes import onboarding as onboarding_routes
+from resumeai.api.routes import pages as pages_routes
 from resumeai.api.routes import settings as settings_routes
 from resumeai.api.routes import tailor as tailor_routes
 from resumeai.api.routes import templates as templates_routes
@@ -80,5 +81,6 @@ def create_app(
     app.include_router(oauth_routes.router)
     app.include_router(tailor_routes.router)
     app.include_router(templates_routes.router)
+    app.include_router(pages_routes.router)
 
     return app
