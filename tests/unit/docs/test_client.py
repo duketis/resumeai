@@ -67,6 +67,22 @@ def test_fake_export_returns_configured_bytes_and_records_call() -> None:
     assert client.export_calls == ["doc-id"]
 
 
+def test_fake_batch_update_records_call_and_returns_configured_response() -> None:
+    client = FakeDocsClient(batch_update_returns={"replies": [{"insertText": {}}]})
+    requests = [{"insertText": {"location": {"index": 1}, "text": "x"}}]
+
+    result = client.batch_update("doc-id", requests)
+
+    assert result == {"replies": [{"insertText": {}}]}
+    assert client.batch_update_calls == [("doc-id", requests)]
+
+
+def test_fake_batch_update_default_returns_empty_dict() -> None:
+    client = FakeDocsClient()
+    result = client.batch_update("doc-id", [])
+    assert result == {}
+
+
 # -- GoogleDocsClient -------------------------------------------------------
 
 
@@ -137,4 +153,21 @@ def test_google_client_export_pdf_returns_bytes(mocker: MockerFixture) -> None:
     assert pdf == b"%PDF"
     drive_mock.files.return_value.export.assert_called_once_with(
         fileId="doc-id", mimeType="application/pdf"
+    )
+
+
+def test_google_client_batch_update_passes_requests(mocker: MockerFixture) -> None:
+    docs_mock = MagicMock()
+    drive_mock = MagicMock()
+    mocker.patch("googleapiclient.discovery.build", side_effect=[docs_mock, drive_mock])
+    mocker.patch("google.oauth2.credentials.Credentials")
+    docs_mock.documents.return_value.batchUpdate.return_value.execute.return_value = {"replies": []}
+
+    client = GoogleDocsClient(_creds())
+    requests = [{"insertText": {"location": {"index": 1}, "text": "hi"}}]
+    result = client.batch_update("doc-id", requests)
+
+    assert result == {"replies": []}
+    docs_mock.documents.return_value.batchUpdate.assert_called_once_with(
+        documentId="doc-id", body={"requests": requests}
     )

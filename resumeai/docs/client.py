@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class DocsClient(Protocol):
-    """The four Google operations resumeai needs."""
+    """The Google operations resumeai needs."""
 
     def get_document(self, doc_id: str) -> dict[str, Any]:
         """Return the full ``documents.get`` response for ``doc_id``."""
@@ -29,6 +29,15 @@ class DocsClient(Protocol):
 
     def export_pdf(self, doc_id: str) -> bytes:
         """Export ``doc_id`` to PDF via Drive ``files.export``."""
+
+    def batch_update(self, doc_id: str, requests: list[dict[str, Any]]) -> dict[str, Any]:
+        """Issue a Docs ``documents.batchUpdate`` against ``doc_id``.
+
+        ``requests`` is the list of request objects per the Docs API; the
+        Phase 5 renderer is the only caller. Operations within a single
+        batch run in order against the current state of the doc, so a
+        delete + insert pair shifts indices correctly without further work.
+        """
 
 
 class GoogleDocsClient:
@@ -76,6 +85,14 @@ class GoogleDocsClient:
         )
         return result
 
+    def batch_update(self, doc_id: str, requests: list[dict[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = (
+            self._docs.documents()
+            .batchUpdate(documentId=doc_id, body={"requests": requests})
+            .execute()
+        )
+        return result
+
 
 class FakeDocsClient:
     """Test double. Records calls; returns scripted responses.
@@ -95,13 +112,16 @@ class FakeDocsClient:
         documents: dict[str, dict[str, Any]] | None = None,
         copy_returns: str = "fake-new-doc-id",
         pdf_bytes: bytes = b"",
+        batch_update_returns: dict[str, Any] | None = None,
     ) -> None:
         self._documents = documents or {}
         self._copy_returns = copy_returns
         self._pdf_bytes = pdf_bytes
+        self._batch_update_returns = batch_update_returns or {}
         self.get_calls: list[str] = []
         self.copy_calls: list[tuple[str, str]] = []
         self.export_calls: list[str] = []
+        self.batch_update_calls: list[tuple[str, list[dict[str, Any]]]] = []
 
     def get_document(self, doc_id: str) -> dict[str, Any]:
         self.get_calls.append(doc_id)
@@ -116,3 +136,7 @@ class FakeDocsClient:
     def export_pdf(self, doc_id: str) -> bytes:
         self.export_calls.append(doc_id)
         return self._pdf_bytes
+
+    def batch_update(self, doc_id: str, requests: list[dict[str, Any]]) -> dict[str, Any]:
+        self.batch_update_calls.append((doc_id, requests))
+        return self._batch_update_returns
