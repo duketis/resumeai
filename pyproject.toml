@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "resumeai"
-version = "0.4.0"
+version = "0.5.0"
 description = "AI-driven resume tailoring service: reads a job description and your full career context, then drives a Google Docs template into a tailored resume."
 readme = "README.md"
 license = { file = "LICENSE" }

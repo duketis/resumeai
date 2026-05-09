@@ -16,7 +16,7 @@ Given a job description (text or URL) and a master Google Docs resume template, 
 
 ## Status
 
-**v0.4.0 — Phase 3 shipped.** Adds the user-context layer. Resumeai now reads a structured `resume.yaml` plus per-role `work_history/*.md`, per-repo `git_audit/*.md`, and `cover_letters/*.md` markdown files (YAML frontmatter for metadata, body text for narrative + bullets) from a hot-reloadable local directory. The store reloads automatically on every read whenever any source file changes — no restart needed when you tweak a bullet. The end-to-end tailoring agent (Phase 4) consumes both this and the Phase 2 `JobRequirements` to produce a tailored `ResumeModel`; the renderer (Phase 5) drives that model into a fresh copy of your Google Doc. **267 tests, 100% line + branch coverage, CI green.** See `_private/BUILD_PLAN.md` (gitignored — interview material) for the full plan.
+**v0.5.0 — Phase 4 shipped.** Adds the tailoring agent. Given the Phase 2 `JobRequirements` and the Phase 3 `UserContext`, the agent calls the `claude` CLI subprocess (Anthropic Max subscription, no API billing) once with a structured-markdown prompt and produces a validated `TailoredResume` — name + contact passthrough, freshly written headline + summary, JD-ordered skills, per-role work history with tailored bullets carrying `source_slug` provenance, education + certifications passthrough, and a one-paragraph rationale. The Phase 5 renderer pastes this into a fresh copy of your master Google Doc. **305 tests, 100% line + branch coverage, CI green.** See `_private/BUILD_PLAN.md` (gitignored — interview material) for the full plan.
 
 Run `resumeai serve` and open `http://localhost:7842/` to follow the in-app onboarding wizard for the one-time Google Cloud OAuth client setup.
 
