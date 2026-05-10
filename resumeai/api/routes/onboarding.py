@@ -29,7 +29,22 @@ def index(
 
 @router.get("/onboarding", response_class=HTMLResponse)
 def onboarding(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "onboarding.html", {})
+    """Render the wizard.
+
+    The redirect URI shown to the user is derived from the current
+    request's base URL — so whatever hostname they typed in the browser
+    (``localhost``, ``127.0.0.1``, an IP, etc.) is what they're told to
+    register. The OAuth start route uses the same derivation, so the
+    two stay in lockstep and the user can't trip over the
+    ``localhost`` / ``127.0.0.1`` foot-gun.
+    """
+    base = str(request.base_url).rstrip("/")
+    callback = f"{base}/api/auth/google/callback"
+    return templates.TemplateResponse(
+        request,
+        "onboarding.html",
+        {"callback_url": callback, "base_url": base},
+    )
 
 
 @router.get("/healthz", include_in_schema=False)

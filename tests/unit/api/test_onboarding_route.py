@@ -13,8 +13,21 @@ def test_onboarding_page_renders(client: TestClient) -> None:
 
     assert response.status_code == 200
     body = response.text
-    # If the wizard's recommended redirect URI ever drifts from the route,
-    # nothing else will catch it — this is the canonical assertion.
+    # The wizard tells the user to register both the canonical hostnames
+    # so they don't trip over Google's localhost / 127.0.0.1 distinction.
     assert "http://localhost:7842/api/auth/google/callback" in body
+    assert "http://127.0.0.1:7842/api/auth/google/callback" in body
     assert "Google Cloud Console" in body
     assert "client_secret" in body
+
+
+def test_onboarding_page_shows_session_specific_callback(
+    client: TestClient,
+) -> None:
+    """The wizard surfaces the redirect URI the OAuth start route will
+    actually use for *this* session, so the user can't pick a hostname
+    they didn't register."""
+    response = client.get("/onboarding")
+    body = response.text
+    # TestClient defaults to http://testserver, so that's the base.
+    assert "http://testserver/api/auth/google/callback" in body

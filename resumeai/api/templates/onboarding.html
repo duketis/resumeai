@@ -27,7 +27,14 @@
     <ul>
       <li>Application type: <strong>Web application</strong>.</li>
       <li>Name: <code>resumeai local</code>.</li>
-      <li>Authorised redirect URIs: <code>http://localhost:7842/api/auth/google/callback</code></li>
+      <li>
+        Authorised redirect URIs — add <strong>both</strong> of these so it works whether you visit via <code>localhost</code> or <code>127.0.0.1</code> (Google treats them as different URIs):
+        <ul>
+          <li><code>http://localhost:7842/api/auth/google/callback</code></li>
+          <li><code>http://127.0.0.1:7842/api/auth/google/callback</code></li>
+        </ul>
+        {% if callback_url %}<p style="margin-top: 0.4em;">Your current session will use: <code>{{ callback_url }}</code></p>{% endif %}
+      </li>
       <li>Click <strong>Create</strong>. A dialog appears with your client ID and secret.</li>
     </ul>
   </li>
