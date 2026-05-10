@@ -138,6 +138,30 @@ def test_update_run_can_attach_jd_requirements_and_result(store: RunsStore) -> N
 # -- SQLite-specific persistence -------------------------------------------
 
 
+def test_sqlite_store_is_usable_from_a_worker_thread(tmp_path: Path) -> None:
+    """FastAPI dispatches sync route handlers to a threadpool — the
+    connection must survive cross-thread access (``check_same_thread=False``).
+    Regression test for a 500 on /runs and /runs/{id}."""
+    import threading  # noqa: PLC0415
+
+    db_path = tmp_path / "runs.db"
+    store = SqliteRunsStore(db_path=db_path)
+    try:
+        store.save(_make_run())
+        result: list[Run | None] = []
+
+        def fetch_in_thread() -> None:
+            result.append(store.get("run_a"))
+
+        thread = threading.Thread(target=fetch_in_thread)
+        thread.start()
+        thread.join(timeout=2)
+
+        assert result and result[0] is not None
+    finally:
+        store.close()
+
+
 def test_sqlite_persists_across_reopen(tmp_path: Path) -> None:
     db_path = tmp_path / "runs.db"
     a = SqliteRunsStore(db_path=db_path)

@@ -41,7 +41,10 @@ class SqliteRunsStore:
     def __init__(self, db_path: Path | None = None) -> None:
         self._db_path = db_path or DEFAULT_DB_PATH
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self._db_path, isolation_level=None)
+        # check_same_thread=False so the connection survives FastAPI's
+        # worker-threadpool dispatch. SQLite serialises writes at the C
+        # level; per-call usage is safe at our concurrency profile.
+        self._conn = sqlite3.connect(self._db_path, isolation_level=None, check_same_thread=False)
         self._conn.executescript(_SCHEMA_SQL)
 
     def close(self) -> None:

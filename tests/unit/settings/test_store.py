@@ -177,6 +177,31 @@ def test_sqlite_store_applies_owner_only_perms(tmp_path: Path) -> None:
         store.close()
 
 
+def test_sqlite_store_is_usable_from_a_worker_thread(tmp_path: Path) -> None:
+    """FastAPI dispatches sync route handlers to a threadpool — the
+    connection must survive cross-thread access (``check_same_thread=False``).
+    Regression test for a 500 on every server-rendered page that touched
+    settings storage."""
+    import threading  # noqa: PLC0415
+
+    db_path = tmp_path / "resumeai.db"
+    store = SqliteSettingsStore(db_path=db_path)
+    try:
+        store.set_oauth_client(_sample_oauth_client())
+        result: list[OAuthClient | None] = []
+
+        def fetch_in_thread() -> None:
+            result.append(store.get_oauth_client())
+
+        thread = threading.Thread(target=fetch_in_thread)
+        thread.start()
+        thread.join(timeout=2)
+
+        assert result and result[0] is not None
+    finally:
+        store.close()
+
+
 def test_sqlite_store_persists_across_reopen(tmp_path: Path) -> None:
     db_path = tmp_path / "resumeai.db"
     store_a = SqliteSettingsStore(db_path=db_path)
