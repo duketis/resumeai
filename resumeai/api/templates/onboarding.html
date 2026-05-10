@@ -19,7 +19,7 @@
       <li>User type: <strong>External</strong> → Create.</li>
       <li>App name: <code>resumeai</code>. Support email + developer email: your email.</li>
       <li>Scopes: skip (we'll request what we need at runtime).</li>
-      <li>Test users: add your own Google account (the one whose Docs you'll be tailoring).</li>
+      <li><strong>Test users: this is the bit that gets missed.</strong> Add your own Google account email (the one whose Docs you'll be tailoring) to the test-users list. Without this you'll get <code>Error 403: access_denied</code> on Connect Google because the OAuth consent screen ships in "Testing" mode and only lets listed users sign in.</li>
     </ul>
   </li>
   <li>
