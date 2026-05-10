@@ -114,7 +114,18 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # S105/S106/S107: test fixtures use obviously fake credential strings;
 # the security check is high-noise on test code.
-"tests/**/*.py" = ["S101", "PLR2004", "ANN", "PLR0915", "S105", "S106", "S107"]
+# S607: tests run binaries from PATH (eg ``git`` for repo fixtures);
+# the absolute-path requirement only matters for production code.
+"tests/**/*.py" = [
+  "S101",
+  "PLR2004",
+  "ANN",
+  "PLR0915",
+  "S105",
+  "S106",
+  "S107",
+  "S607",
+]
 
 [tool.ruff.lint.flake8-bugbear]
 # Typer's `param: T = typer.Option(...)` and FastAPI's

@@ -229,6 +229,99 @@ def test_snippet_form_renders_on_context_page(client: TestClient) -> None:
     assert 'name="text"' in body
 
 
+# -- POST /context/project (scan local project) ---------------------------
+
+
+def test_project_scan_persists_summary(
+    client: TestClient, context_files: InMemoryContextFileStore, tmp_path: object
+) -> None:
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "myproj"  # type: ignore[arg-type]
+    project.mkdir()
+    (project / "README.md").write_text("# My Project\n")
+
+    response = client.post(
+        "/context/project",
+        data={
+            "path": str(project),
+            "name": "My Cool Project",
+            "tags": "project:cool",
+            "note": "personal weekend project",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "flash=" in response.headers["location"]
+
+    files = context_files.list_all()
+    assert len(files) == 1
+    assert files[0].name == "My Cool Project (project scan)"
+    assert "PROJECT: My Cool Project" in files[0].extracted_text
+    assert "# My Project" in files[0].extracted_text
+    assert "source:local_project" in files[0].tags
+    assert "project:cool" in files[0].tags
+    assert files[0].note == "personal weekend project"
+
+
+def test_project_scan_with_blank_path_redirects_with_error(
+    client: TestClient, context_files: InMemoryContextFileStore
+) -> None:
+    response = client.post("/context/project", data={"path": "  "}, follow_redirects=False)
+    assert response.status_code == 303
+    assert "error=Project+path" in response.headers["location"]
+    assert context_files.list_all() == []
+
+
+def test_project_scan_with_missing_path_redirects_with_error(
+    client: TestClient, context_files: InMemoryContextFileStore
+) -> None:
+    response = client.post(
+        "/context/project",
+        data={"path": "/nonexistent-resumeai-test-path-xyz"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert "error=Could+not+scan+project" in response.headers["location"]
+    assert context_files.list_all() == []
+
+
+def test_project_scan_does_not_duplicate_source_tag_when_user_supplies_it(
+    client: TestClient, context_files: InMemoryContextFileStore, tmp_path: object
+) -> None:
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "p"  # type: ignore[arg-type]
+    project.mkdir()
+    client.post(
+        "/context/project",
+        data={"path": str(project), "tags": "source:local_project, foo"},
+        follow_redirects=False,
+    )
+    files = context_files.list_all()
+    assert files[0].tags.count("source:local_project") == 1
+
+
+def test_project_scan_default_name_uses_directory_basename(
+    client: TestClient, context_files: InMemoryContextFileStore, tmp_path: object
+) -> None:
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "named-from-dir"  # type: ignore[arg-type]
+    project.mkdir()
+    client.post("/context/project", data={"path": str(project)}, follow_redirects=False)
+    files = context_files.list_all()
+    assert files[0].name.startswith("named-from-dir")
+
+
+def test_project_scan_form_renders_on_context_page(client: TestClient) -> None:
+    body = client.get("/context").text
+    assert 'action="/context/project"' in body
+    assert 'name="path"' in body
+    assert 'name="author_email"' in body
+
+
 # -- POST /context/{id}/delete (form delete) -------------------------------
 
 

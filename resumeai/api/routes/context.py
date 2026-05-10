@@ -11,6 +11,7 @@ from resumeai.api.deps import get_context_file_store
 from resumeai.api.templating import templates
 from resumeai.context_files.extraction import ExtractionError, extract_text
 from resumeai.context_files.models import ContextFileKind
+from resumeai.local_projects.scanner import ScanError, scan_project
 
 if TYPE_CHECKING:
     from resumeai.context_files.store import ContextFileStore
@@ -88,6 +89,43 @@ def add_context_snippet(
         note=note.strip(),
     )
     return RedirectResponse(f"/context?flash=Added+snippet+{name_clean}", status_code=303)
+
+
+@router.post("/context/project", include_in_schema=False)
+def add_local_project(
+    path: str = Form(...),
+    name: str = Form(""),
+    author_email: str = Form(""),
+    note: str = Form(""),
+    tags: str = Form(""),
+    store: ContextFileStore = Depends(get_context_file_store),
+) -> RedirectResponse:
+    """Scan a registered local project directory + persist the summary as a
+    context file. Re-scanning is a delete + re-add today."""
+    path_clean = path.strip()
+    if not path_clean:
+        return RedirectResponse("/context?error=Project+path+is+required", status_code=303)
+    try:
+        summary = scan_project(
+            path_clean,
+            name=name.strip() or None,
+            author_email=author_email.strip() or None,
+        )
+    except ScanError as exc:
+        return RedirectResponse(f"/context?error=Could+not+scan+project%3A+{exc}", status_code=303)
+    display_name = name.strip() or path_clean.rstrip("/").rsplit("/", 1)[-1] or path_clean
+    base_tags = [t.strip() for t in tags.split(",") if t.strip()]
+    if "source:local_project" not in base_tags:
+        base_tags.append("source:local_project")
+    store.add(
+        name=f"{display_name} (project scan)",
+        kind=ContextFileKind.MARKDOWN,
+        extracted_text=summary,
+        byte_size=len(summary.encode()),
+        tags=tuple(base_tags),
+        note=note.strip(),
+    )
+    return RedirectResponse(f"/context?flash=Scanned+{display_name}", status_code=303)
 
 
 @router.post("/context/{file_id}/delete", include_in_schema=False)

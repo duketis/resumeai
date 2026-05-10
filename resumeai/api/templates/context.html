@@ -16,6 +16,22 @@
   <p><button type="submit">Upload file</button></p>
 </form>
 
+<h3>Or scan a local project directory</h3>
+<p style="color: var(--muted);">Point at any project directory on your machine. Scanner pulls the README, the top-level structure, and (if it's a git repo) your authored commit history into a single context file. Privacy: scripts skip <code>.env</code>, <code>credentials*</code>, <code>node_modules</code>, etc. Re-scan = remove + re-add.</p>
+<form method="post" action="/context/project" class="card">
+  <p><strong>Absolute path</strong> (eg <code>/Users/jonathan/Documents/personal/jobai</code>):</p>
+  <input type="text" name="path" required placeholder="/path/to/your/project">
+  <p><strong>Display name</strong> (optional — defaults to the directory's basename):</p>
+  <input type="text" name="name" placeholder="jobai">
+  <p><strong>Git author email</strong> (optional — filters <code>git log</code> to commits by you; without it the scan summarises ALL commits in the repo):</p>
+  <input type="text" name="author_email" placeholder="jonathanmarkduketis@gmail.com">
+  <p><strong>Tags</strong> (comma-separated, optional):</p>
+  <input type="text" name="tags" placeholder="project:jobai, role:engineering">
+  <p><strong>Note</strong> (optional):</p>
+  <input type="text" name="note" placeholder="my main job-hunting project, Python+FastAPI">
+  <p><button type="submit">Scan project</button></p>
+</form>
+
 <h3>Or paste a text snippet</h3>
 <p style="color: var(--muted);">Use this for free-text notes about other uploads, copy-pasted bits of context, comments to the agent — anything you want to type instead of upload.</p>
 <form method="post" action="/context/snippet" class="card">
