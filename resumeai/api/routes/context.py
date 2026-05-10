@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from resumeai.api.deps import get_context_file_store
 from resumeai.api.templating import templates
 from resumeai.context_files.extraction import ExtractionError, extract_text
+from resumeai.context_files.models import ContextFileKind
 
 if TYPE_CHECKING:
     from resumeai.context_files.store import ContextFileStore
@@ -61,6 +62,32 @@ async def upload_context_file(
         note=note.strip(),
     )
     return RedirectResponse(f"/context?flash=Uploaded+{filename}", status_code=303)
+
+
+@router.post("/context/snippet", include_in_schema=False)
+def add_context_snippet(
+    name: str = Form(...),
+    text: str = Form(...),
+    note: str = Form(""),
+    tags: str = Form(""),
+    store: ContextFileStore = Depends(get_context_file_store),
+) -> RedirectResponse:
+    """Save an inline text snippet — pasted notes, comments about other
+    uploads, anything the user wants to type freely."""
+    name_clean = name.strip() or "snippet"
+    text_clean = text.strip()
+    if not text_clean:
+        return RedirectResponse("/context?error=Snippet+text+is+empty", status_code=303)
+    tag_tuple = tuple(t.strip() for t in tags.split(",") if t.strip())
+    store.add(
+        name=name_clean,
+        kind=ContextFileKind.TEXT,
+        extracted_text=text_clean,
+        byte_size=len(text_clean.encode()),
+        tags=tag_tuple,
+        note=note.strip(),
+    )
+    return RedirectResponse(f"/context?flash=Added+snippet+{name_clean}", status_code=303)
 
 
 @router.post("/context/{file_id}/delete", include_in_schema=False)

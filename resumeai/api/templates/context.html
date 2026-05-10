@@ -6,13 +6,28 @@
 
 <p>Upload PDFs, CSVs, text, or markdown files that the tailoring agent should consider alongside your resume base. Add a git audit CSV, a project portfolio PDF, hand-written notes about a side project, anything that helps the agent pick the right experience for a JD.</p>
 
+<h3>Upload a file</h3>
 <form method="post" action="/context" enctype="multipart/form-data" class="card">
   <p><strong>File:</strong> <input type="file" name="upload" required accept=".pdf,.csv,.txt,.md,.markdown"></p>
   <p><strong>Tags</strong> (comma-separated, optional — eg <code>project:resumeai, role:engineering</code>):</p>
   <input type="text" name="tags" placeholder="project:foo, role:eng">
   <p><strong>Note</strong> (optional — what's in this file, when to use it):</p>
   <input type="text" name="note" placeholder="git audit for Q1 2026 work at Acme">
-  <p><button type="submit">Upload</button></p>
+  <p><button type="submit">Upload file</button></p>
+</form>
+
+<h3>Or paste a text snippet</h3>
+<p style="color: var(--muted);">Use this for free-text notes about other uploads, copy-pasted bits of context, comments to the agent — anything you want to type instead of upload.</p>
+<form method="post" action="/context/snippet" class="card">
+  <p><strong>Name</strong> (what to call this snippet):</p>
+  <input type="text" name="name" required placeholder="2026 reflection on Acme tenure">
+  <p><strong>Text:</strong></p>
+  <textarea name="text" required placeholder="Paste or type anything — a JD-style summary of one of your projects, a clarification about a CSV you uploaded, a 'don't include the Beta Inc role for engineering jobs' note, etc."></textarea>
+  <p><strong>Tags</strong> (comma-separated, optional):</p>
+  <input type="text" name="tags" placeholder="project:foo, note">
+  <p><strong>Note</strong> (optional — meta-comment about this snippet):</p>
+  <input type="text" name="note" placeholder="for context on the git_audit.csv I uploaded">
+  <p><button type="submit">Save snippet</button></p>
 </form>
 
 <h2>Uploaded ({{ files | length }})</h2>

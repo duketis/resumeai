@@ -77,18 +77,34 @@ no preamble) matching this exact schema:
 }
 
 Hard rules:
-- Use ONLY facts present in CANDIDATE CONTEXT. Never invent companies,
-  titles, dates, technologies, achievements, or metrics.
+- Use ONLY facts present in CANDIDATE CONTEXT or UPLOADED CONTEXT FILES.
+  Never invent companies, titles, dates, technologies, achievements, or
+  metrics.
 - Bullets may be REPHRASED to use the JD's vocabulary, but the underlying
-  achievement must come from a source bullet or the role summary.
+  achievement must come from a source bullet, role summary, or uploaded
+  file.
 - Reorder skills so the JD's required skills appear first. Drop skills the
-  candidate doesn't have. Don't add skills not in CANDIDATE CONTEXT.
+  candidate doesn't have. Don't add skills not in any context source.
 - 4-7 bullets per work_history entry, descending importance.
 - Each bullet ≤25 words, action verb first, quantified where the source
   supports it.
 - Drop work_history entries the JD makes irrelevant ONLY if the resume is
   too long otherwise; default to keeping every entry.
 - Keep candidate name, contact, education, dates, employer names verbatim.
+
+Multi-source rules:
+- The MASTER TEMPLATE's current content (when present in uploaded files,
+  tagged ``source:master_template``) is the existing resume. Treat it as
+  authoritative for facts already on the resume — same employer names,
+  dates, education entries.
+- When two sources disagree on a fact (different dates for the same role,
+  different metric values), prefer in this order: (1) the master template,
+  (2) the most recent / most specific uploaded file (look at the user's
+  note + tags for hints), (3) the structured CANDIDATE CONTEXT.
+- When two sources describe the same achievement in different words, pick
+  the wording that best echoes the JD's vocabulary, and fold any unique
+  details from the other source(s) into one cohesive bullet.
+
 - Output the JSON object and nothing else.
 """
 

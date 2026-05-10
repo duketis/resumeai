@@ -32,6 +32,7 @@ from resumeai.runs.store import update_run
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from resumeai.context_files.models import ContextFile
     from resumeai.context_files.store import ContextFileStore
     from resumeai.docs.client import DocsClient
     from resumeai.llm.client import LLMClient
@@ -162,10 +163,15 @@ class TailoringOrchestrator:
         )
         update_run(self._runs, run_id, requirements=requirements)
 
-        # Step 3: load the user's context tree + uploaded files.
+        # Step 3: load the user's context tree + uploaded files + the master
+        # template's CURRENT content (so the agent can preserve good bullets
+        # the master already has rather than treating the doc as a blank shell).
         await self._step(run_id, RunStatus.LOADING_CONTEXT, "loading user context")
         context = await asyncio.to_thread(load_user_context, self._context_root)
-        context_files = tuple(self._context_files.list_all()) if self._context_files else ()
+        context_files_list = list(self._context_files.list_all()) if self._context_files else []
+        master_snapshot = await asyncio.to_thread(self._snapshot_master_template, template_doc_id)
+        if master_snapshot is not None:
+            context_files_list.insert(0, master_snapshot)
 
         # Step 4: tailor.
         await self._step(run_id, RunStatus.TAILORING, "running tailoring agent")
@@ -175,7 +181,7 @@ class TailoringOrchestrator:
             context,
             self._llm,
             model=request.model,
-            context_files=context_files,
+            context_files=tuple(context_files_list),
         )
         update_run(self._runs, run_id, tailored=tailored)
 
@@ -222,6 +228,69 @@ class TailoringOrchestrator:
                 "no Google credentials — connect a Google account in Settings first"
             )
         return self._docs_factory(creds)
+
+    def _snapshot_master_template(self, template_doc_id: str) -> ContextFile | None:
+        """Read the master template's current text + return it as a synthetic
+        ``ContextFile`` so the agent sees what's already in the doc.
+
+        Returns ``None`` if Google access isn't configured (the orchestrator
+        will fail later anyway when it tries to render); we don't raise here
+        so the agent step still runs even on auth-only failure paths.
+        """
+        from datetime import UTC, datetime  # noqa: PLC0415
+
+        from resumeai.context_files.models import (  # noqa: PLC0415
+            ContextFile,
+            ContextFileKind,
+        )
+        from resumeai.docs.reader import paragraph_text  # noqa: PLC0415
+
+        try:
+            client = self._build_docs_client()
+        except OrchestratorError:
+            return None
+        try:
+            raw = client.get_document(template_doc_id)
+        except Exception:  # noqa: BLE001 — render-step error path will fail loudly
+            return None
+
+        body = raw.get("body", {})
+        elements = body.get("content", []) if isinstance(body, dict) else []
+        if not isinstance(elements, list):
+            return None
+
+        lines: list[str] = []
+        for el in elements:
+            if not isinstance(el, dict):
+                continue
+            paragraph = el.get("paragraph")
+            if not isinstance(paragraph, dict):
+                continue
+            text = paragraph_text(paragraph).rstrip("\n")
+            if text:
+                lines.append(text)
+        if not lines:
+            return None
+
+        body_text = "\n".join(lines)
+        title = raw.get("title", "Master template")
+        return ContextFile(
+            id="ctx_master_template",
+            name=f"{title} (current master content)",
+            kind=ContextFileKind.MARKDOWN,
+            extracted_text=body_text,
+            byte_size=len(body_text.encode()),
+            tags=("source:master_template",),
+            uploaded_at=datetime.now(UTC),
+            note=(
+                "This is the CURRENT text of the user's master Google Doc. "
+                "Treat it as authoritative for facts already on the resume "
+                "(employer names, dates, education) and prefer its wording "
+                "where you don't have a stronger reason to change it. The "
+                "renderer will paste your tailored content INTO a copy of "
+                "this template, so its formatting is preserved automatically."
+            ),
+        )
 
 
 def _generate_run_id() -> str:

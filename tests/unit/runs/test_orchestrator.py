@@ -195,8 +195,11 @@ async def test_execute_walks_full_pipeline_on_text_input() -> None:
     assert finished.tailored.name == "Alex Sample"
     assert finished.result is not None
     assert finished.result.doc_id == "new-doc-id"
-    # The DocsClient was built once with the stored credentials.
-    assert len(captured) == 1
+    # The DocsClient is built once for the snapshot step + once for the
+    # render step. Both with the stored credentials.
+    assert len(captured) >= 1
+    # The render client (the last one) is the one that did the copy.
+    assert captured[-1].copy_calls[0][0] == "master-doc"
 
 
 @pytest.mark.asyncio
@@ -220,8 +223,8 @@ async def test_execute_uses_request_template_doc_id_when_supplied() -> None:
     finished = await orchestrator.execute(run.id)
     assert finished.status is RunStatus.SUCCEEDED
 
-    client = captured[0]
-    assert client.copy_calls[0][0] == "explicit-master"
+    # The render client (last one captured) issued the files.copy.
+    assert captured[-1].copy_calls[0][0] == "explicit-master"
 
 
 @pytest.mark.asyncio
@@ -404,6 +407,198 @@ def test_orchestrator_error_inheritance_from_runtime_error() -> None:
     """Belt-and-braces: ensure callers can `except RuntimeError` and catch us."""
     err = OrchestratorError("boom")
     assert isinstance(err, RuntimeError)
+
+
+# -- master-template snapshot ------------------------------------------------
+
+
+def test_snapshot_master_template_returns_none_when_no_credentials() -> None:
+    """Without Google creds the snapshot can't run — return None gracefully so
+    the agent step still proceeds (the render step will fail loudly later)."""
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=InMemorySettingsStore(),  # no creds
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: FakeDocsClient(),
+    )
+    assert orchestrator._snapshot_master_template("master-id") is None
+
+
+def test_snapshot_master_template_returns_none_on_get_document_failure() -> None:
+    """Network / 404 / permission errors during the snapshot read are
+    swallowed; the render step will surface them later."""
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    fake_client = FakeDocsClient()  # no documents scripted → KeyError on get
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=settings,
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: fake_client,
+    )
+    assert orchestrator._snapshot_master_template("missing") is None
+
+
+def test_snapshot_master_template_returns_context_file_with_master_text() -> None:
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    fake_client = FakeDocsClient(documents={"master-id": _basic_template_doc()})
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=settings,
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: fake_client,
+    )
+
+    snapshot = orchestrator._snapshot_master_template("master-id")
+
+    assert snapshot is not None
+    assert "Summary" in snapshot.extracted_text
+    assert snapshot.tags == ("source:master_template",)
+    assert "master Google Doc" in snapshot.note
+
+
+def test_snapshot_master_template_returns_none_for_empty_doc() -> None:
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    empty_doc: dict[str, Any] = {
+        "documentId": "x",
+        "title": "Empty",
+        "revisionId": "r",
+        "body": {"content": []},
+    }
+    fake_client = FakeDocsClient(documents={"master-id": empty_doc})
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=settings,
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: fake_client,
+    )
+
+    assert orchestrator._snapshot_master_template("master-id") is None
+
+
+def test_snapshot_master_template_returns_none_when_body_malformed() -> None:
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    bad_doc: dict[str, Any] = {
+        "documentId": "x",
+        "title": "T",
+        "revisionId": "r",
+        "body": {"content": "garbage-not-a-list"},
+    }
+    fake_client = FakeDocsClient(documents={"master-id": bad_doc})
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=settings,
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: fake_client,
+    )
+    assert orchestrator._snapshot_master_template("master-id") is None
+
+
+def test_snapshot_master_template_skips_malformed_elements() -> None:
+    """Walks the body content and skips non-dict / non-paragraph entries.
+
+    Also includes a paragraph with empty text content (just a trailing
+    newline) — the snapshot should skip it rather than emitting a blank
+    line.
+    """
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    doc = _basic_template_doc()
+    doc["body"]["content"].append("not-a-dict")
+    doc["body"]["content"].append({"sectionBreak": {}})
+    # A paragraph with only a trailing newline (visually a blank line).
+    doc["body"]["content"].append(
+        {
+            "startIndex": 12,
+            "endIndex": 13,
+            "paragraph": {
+                "elements": [
+                    {
+                        "startIndex": 12,
+                        "endIndex": 13,
+                        "textRun": {"content": "\n", "textStyle": {}},
+                    }
+                ]
+            },
+        }
+    )
+    fake_client = FakeDocsClient(documents={"master-id": doc})
+    orchestrator = TailoringOrchestrator(
+        runs_store=InMemoryRunsStore(),
+        settings_store=settings,
+        llm_client=FakeLLMClient(),
+        docs_client_factory=lambda _c: fake_client,
+    )
+    snapshot = orchestrator._snapshot_master_template("master-id")
+    assert snapshot is not None
+    # The blank-line paragraph isn't echoed into the extracted text.
+    assert "Summary" in snapshot.extracted_text
+    assert "\n\n" not in snapshot.extracted_text.strip()
+
+
+@pytest.mark.asyncio
+async def test_execute_includes_master_snapshot_in_agent_context_files(
+    mocker: object,
+) -> None:
+    """End-to-end: when the master template is readable, the orchestrator
+    feeds its current text to the tailoring agent as a synthetic context
+    file."""
+    runs = InMemoryRunsStore()
+    settings = InMemorySettingsStore()
+    _seed_credentials(settings)
+
+    template_doc = _basic_template_doc()
+
+    def factory(_creds: GoogleCredentials) -> DocsClient:
+        return FakeDocsClient(
+            documents={
+                "explicit-master": template_doc,
+                "new-doc-id": template_doc,
+            },
+            copy_returns="new-doc-id",
+            pdf_bytes=b"%PDF",
+        )
+
+    union = {**_JD_EXTRACTION_JSON, **_TAILORED_JSON}
+    llm = FakeLLMClient(default_response=json.dumps(union))
+
+    # Patch tailor_resume in the orchestrator's namespace so we can capture
+    # the context_files it received without losing real behaviour.
+    from resumeai.agent.tailor import tailor_resume as real_tailor  # noqa: PLC0415
+
+    captured_files: list[Any] = []
+
+    def capturing_tailor(*args: Any, **kwargs: Any) -> Any:
+        captured_files.append(kwargs.get("context_files", ()))
+        return real_tailor(*args, **kwargs)
+
+    mocker.patch(  # type: ignore[attr-defined]
+        "resumeai.runs.orchestrator.tailor_resume", side_effect=capturing_tailor
+    )
+
+    orchestrator = TailoringOrchestrator(
+        runs_store=runs,
+        settings_store=settings,
+        llm_client=llm,
+        docs_client_factory=factory,
+    )
+    run = orchestrator.create_run(TailorRequest(jd_text="text", template_doc_id="explicit-master"))
+    finished = await orchestrator.execute(run.id)
+
+    assert finished.status is RunStatus.SUCCEEDED
+    assert len(captured_files) == 1
+    files = captured_files[0]
+    assert len(files) == 1
+    assert files[0].id == "ctx_master_template"
+    assert "source:master_template" in files[0].tags
 
 
 # Suppress unused-import warning for MagicMock — kept in case future tests

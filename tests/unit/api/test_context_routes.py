@@ -168,6 +168,67 @@ def test_upload_with_no_tags_persists_empty_tag_tuple(
     assert context_files.list_all()[0].tags == ()
 
 
+# -- POST /context/snippet (text-area inline snippet) ----------------------
+
+
+def test_snippet_persists_pasted_text(
+    client: TestClient, context_files: InMemoryContextFileStore
+) -> None:
+    response = client.post(
+        "/context/snippet",
+        data={
+            "name": "Project notes — resumeai",
+            "text": "I built the resumeai tailoring agent over a weekend.",
+            "tags": "project:resumeai, source:reflection",
+            "note": "for context when applying for AI tooling roles",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "flash=" in response.headers["location"]
+
+    files = context_files.list_all()
+    assert len(files) == 1
+    assert files[0].name == "Project notes — resumeai"
+    assert files[0].kind is ContextFileKind.TEXT
+    assert files[0].extracted_text == "I built the resumeai tailoring agent over a weekend."
+    assert files[0].tags == ("project:resumeai", "source:reflection")
+    assert files[0].note == "for context when applying for AI tooling roles"
+
+
+def test_snippet_with_blank_text_redirects_with_error(
+    client: TestClient, context_files: InMemoryContextFileStore
+) -> None:
+    response = client.post(
+        "/context/snippet",
+        data={"name": "x", "text": "   \n  "},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "error=Snippet+text+is+empty" in response.headers["location"]
+    assert context_files.list_all() == []
+
+
+def test_snippet_with_blank_name_falls_back_to_default(
+    client: TestClient, context_files: InMemoryContextFileStore
+) -> None:
+    client.post(
+        "/context/snippet",
+        data={"name": "  ", "text": "some content"},
+        follow_redirects=False,
+    )
+    files = context_files.list_all()
+    assert files[0].name == "snippet"
+
+
+def test_snippet_form_renders_on_context_page(client: TestClient) -> None:
+    body = client.get("/context").text
+    assert 'action="/context/snippet"' in body
+    assert 'name="text"' in body
+
+
 # -- POST /context/{id}/delete (form delete) -------------------------------
 
 

@@ -137,7 +137,8 @@ def _iter_headings(body: dict[str, Any]) -> list[_RawHeading]:
     return headings
 
 
-def _paragraph_text(paragraph: dict[str, Any]) -> str:
+def paragraph_text(paragraph: dict[str, Any]) -> str:
+    """Concatenate the text of all text-run elements in a paragraph dict."""
     elements = paragraph.get("elements", [])
     if not isinstance(elements, list):
         return ""
@@ -151,6 +152,10 @@ def _paragraph_text(paragraph: dict[str, Any]) -> str:
             if isinstance(content, str):
                 parts.append(content)
     return "".join(parts)
+
+
+# Backwards-compat alias for the previously-private name.
+_paragraph_text = paragraph_text
 
 
 def _section_end(headings: list[_RawHeading], index: int, body_end: int) -> int:
