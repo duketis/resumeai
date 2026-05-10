@@ -15,6 +15,7 @@ from fastapi import Request
 
 if TYPE_CHECKING:
     from resumeai.auth.google_oauth import OAuthService
+    from resumeai.context_files.store import ContextFileStore
     from resumeai.runs.orchestrator import TailoringOrchestrator
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
@@ -28,6 +29,7 @@ class AppState:
     oauth_service: OAuthService
     runs_store: RunsStore
     orchestrator: TailoringOrchestrator
+    context_file_store: ContextFileStore
 
 
 def get_app_state(request: Request) -> AppState:
@@ -49,3 +51,7 @@ def get_runs_store(request: Request) -> RunsStore:
 
 def get_orchestrator(request: Request) -> TailoringOrchestrator:
     return get_app_state(request).orchestrator
+
+
+def get_context_file_store(request: Request) -> ContextFileStore:
+    return get_app_state(request).context_file_store

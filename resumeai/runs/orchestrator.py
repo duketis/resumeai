@@ -32,6 +32,7 @@ from resumeai.runs.store import update_run
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from resumeai.context_files.store import ContextFileStore
     from resumeai.docs.client import DocsClient
     from resumeai.llm.client import LLMClient
     from resumeai.runs.store import RunsStore
@@ -63,6 +64,7 @@ class TailoringOrchestrator:
         event_bus: RunEventBus | None = None,
         context_root: Path = DEFAULT_CONTEXT_ROOT,
         http_client: httpx.Client | None = None,
+        context_file_store: ContextFileStore | None = None,
     ) -> None:
         self._runs = runs_store
         self._settings = settings_store
@@ -71,6 +73,7 @@ class TailoringOrchestrator:
         self._event_bus = event_bus or RunEventBus()
         self._context_root = context_root
         self._http = http_client
+        self._context_files = context_file_store
 
     @property
     def event_bus(self) -> RunEventBus:
@@ -159,14 +162,20 @@ class TailoringOrchestrator:
         )
         update_run(self._runs, run_id, requirements=requirements)
 
-        # Step 3: load the user's context tree.
+        # Step 3: load the user's context tree + uploaded files.
         await self._step(run_id, RunStatus.LOADING_CONTEXT, "loading user context")
         context = await asyncio.to_thread(load_user_context, self._context_root)
+        context_files = tuple(self._context_files.list_all()) if self._context_files else ()
 
         # Step 4: tailor.
         await self._step(run_id, RunStatus.TAILORING, "running tailoring agent")
         tailored = await asyncio.to_thread(
-            tailor_resume, requirements, context, self._llm, model=request.model
+            tailor_resume,
+            requirements,
+            context,
+            self._llm,
+            model=request.model,
+            context_files=context_files,
         )
         update_run(self._runs, run_id, tailored=tailored)
 

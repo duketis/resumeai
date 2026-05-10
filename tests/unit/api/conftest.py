@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from resumeai.api.app import create_app
 from resumeai.auth.google_oauth import OAuthError
+from resumeai.context_files.store import InMemoryContextFileStore
 from resumeai.docs.client import FakeDocsClient
 from resumeai.llm.client import FakeLLMClient
 from resumeai.runs.orchestrator import TailoringOrchestrator
@@ -109,17 +110,24 @@ def docs_client() -> FakeDocsClient:
 
 
 @pytest.fixture
+def context_files() -> InMemoryContextFileStore:
+    return InMemoryContextFileStore()
+
+
+@pytest.fixture
 def orchestrator(
     store: InMemorySettingsStore,
     runs: InMemoryRunsStore,
     llm: FakeLLMClient,
     docs_client: FakeDocsClient,
+    context_files: InMemoryContextFileStore,
 ) -> TailoringOrchestrator:
     return TailoringOrchestrator(
         runs_store=runs,
         settings_store=store,
         llm_client=llm,
         docs_client_factory=lambda _c: docs_client,
+        context_file_store=context_files,
     )
 
 
@@ -130,6 +138,7 @@ def client(
     oauth_service: FakeOAuthService,
     llm: FakeLLMClient,
     orchestrator: TailoringOrchestrator,
+    context_files: InMemoryContextFileStore,
 ) -> Iterator[TestClient]:
     app = create_app(
         settings_store=store,
@@ -137,6 +146,7 @@ def client(
         runs_store=runs,
         llm_client=llm,
         orchestrator=orchestrator,
+        context_file_store=context_files,
     )
     with TestClient(app) as test_client:
         yield test_client

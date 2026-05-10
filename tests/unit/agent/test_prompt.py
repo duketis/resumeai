@@ -294,3 +294,51 @@ def test_user_prompt_orders_sections_consistently(
     ctx_idx = prompt.index("# CANDIDATE CONTEXT")
     out_idx = prompt.index("# OUTPUT")
     assert jd_idx < ctx_idx < out_idx
+
+
+def test_user_prompt_omits_context_files_section_when_none_supplied(
+    sample_jd: JobRequirements, sample_context: UserContext
+) -> None:
+    prompt = build_user_prompt(sample_jd, sample_context)
+    assert "# UPLOADED CONTEXT FILES" not in prompt
+
+
+def test_user_prompt_includes_uploaded_context_files(
+    sample_jd: JobRequirements, sample_context: UserContext
+) -> None:
+    """Uploaded files surface as a dedicated section the agent can read."""
+    from datetime import UTC, datetime  # noqa: PLC0415
+
+    from resumeai.context_files.models import ContextFile, ContextFileKind  # noqa: PLC0415
+
+    files = [
+        ContextFile(
+            id="ctx_a",
+            name="git_audit.csv",
+            kind=ContextFileKind.CSV,
+            extracted_text="repo,commits\nacme/x,1200\n",
+            byte_size=20,
+            tags=("project:acme", "role:eng"),
+            uploaded_at=datetime(2026, 5, 9, tzinfo=UTC),
+            note="Q1 2026 commits",
+        ),
+        ContextFile(
+            id="ctx_b",
+            name="cover_letter.md",
+            kind=ContextFileKind.MARKDOWN,
+            extracted_text="Dear team,\n\nI care about distributed systems.",
+            byte_size=50,
+            uploaded_at=datetime(2026, 5, 9, tzinfo=UTC),
+        ),
+    ]
+
+    prompt = build_user_prompt(sample_jd, sample_context, context_files=files)
+
+    assert "# UPLOADED CONTEXT FILES" in prompt
+    assert "## git_audit.csv (csv)" in prompt
+    assert "tags: project:acme, role:eng" in prompt
+    assert "Q1 2026 commits" in prompt
+    assert "acme/x,1200" in prompt
+    # Second file (no tags, no note) still renders.
+    assert "## cover_letter.md (markdown)" in prompt
+    assert "distributed systems" in prompt

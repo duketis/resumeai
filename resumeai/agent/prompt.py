@@ -10,6 +10,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from resumeai.context.models import (
         CoverLetterEntry,
         GitAuditEntry,
@@ -17,6 +19,7 @@ if TYPE_CHECKING:
         UserContext,
         WorkHistoryEntry,
     )
+    from resumeai.context_files.models import ContextFile
     from resumeai.jd.models import JobRequirements
 
 
@@ -90,18 +93,49 @@ Hard rules:
 """
 
 
-def build_user_prompt(jd: JobRequirements, context: UserContext) -> str:
-    """Compose the per-call user prompt from a JD + a candidate context."""
-    return "\n\n".join(
+def build_user_prompt(
+    jd: JobRequirements,
+    context: UserContext,
+    *,
+    context_files: Sequence[ContextFile] = (),
+) -> str:
+    """Compose the per-call user prompt from a JD, the structured context,
+    and any user-uploaded supplementary context files."""
+    parts = [
+        "# JOB DESCRIPTION",
+        _format_jd(jd),
+        "# CANDIDATE CONTEXT",
+        _format_context(context),
+    ]
+    if context_files:
+        parts.append("# UPLOADED CONTEXT FILES")
+        parts.append(_format_context_files(context_files))
+    parts.extend(
         [
-            "# JOB DESCRIPTION",
-            _format_jd(jd),
-            "# CANDIDATE CONTEXT",
-            _format_context(context),
             "# OUTPUT",
             "Return the tailored resume JSON per the schema in the system prompt.",
         ]
     )
+    return "\n\n".join(parts)
+
+
+def _format_context_files(files: Sequence[ContextFile]) -> str:
+    blocks: list[str] = [
+        "These are user-uploaded files (PDFs, CSVs, text, markdown). Treat each as "
+        "additional candidate-side context to draw on. The user expects you to use "
+        "the file's content where it matches the JD, and to ignore parts that don't.",
+    ]
+    for f in files:
+        header = f"## {f.name} ({f.kind.value})"
+        if f.tags:
+            header += " — tags: " + ", ".join(f.tags)
+        blocks.append(header)
+        if f.note:
+            blocks.append(f"_Note from user:_ {f.note}")
+        blocks.append("```")
+        blocks.append(f.extracted_text.strip())
+        blocks.append("```")
+    return "\n\n".join(blocks)
 
 
 # -- formatters --------------------------------------------------------------

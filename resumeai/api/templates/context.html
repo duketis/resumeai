@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Context — resumeai{% endblock %}
+{% block content %}
+
+<h2>Context files</h2>
+
+<p>Upload PDFs, CSVs, text, or markdown files that the tailoring agent should consider alongside your resume base. Add a git audit CSV, a project portfolio PDF, hand-written notes about a side project, anything that helps the agent pick the right experience for a JD.</p>
+
+<form method="post" action="/context" enctype="multipart/form-data" class="card">
+  <p><strong>File:</strong> <input type="file" name="upload" required accept=".pdf,.csv,.txt,.md,.markdown"></p>
+  <p><strong>Tags</strong> (comma-separated, optional — eg <code>project:resumeai, role:engineering</code>):</p>
+  <input type="text" name="tags" placeholder="project:foo, role:eng">
+  <p><strong>Note</strong> (optional — what's in this file, when to use it):</p>
+  <input type="text" name="note" placeholder="git audit for Q1 2026 work at Acme">
+  <p><button type="submit">Upload</button></p>
+</form>
+
+<h2>Uploaded ({{ files | length }})</h2>
+
+{% if not files %}
+  <p>No context files yet. Upload one above.</p>
+{% else %}
+  <ul style="list-style: none; padding: 0;">
+    {% for file in files %}
+      <li class="card" style="margin-bottom: 0.8em;">
+        <div>
+          <strong>{{ file.name }}</strong>
+          <span style="color: var(--muted); margin-left: 0.6em;">
+            {{ file.kind.value }} · {{ file.byte_size }} bytes ·
+            extracted {{ file.extracted_text | length }} chars
+          </span>
+        </div>
+        {% if file.tags %}
+          <div style="margin-top: 0.3em;">
+            {% for tag in file.tags %}<code style="margin-right: 0.4em;">{{ tag }}</code>{% endfor %}
+          </div>
+        {% endif %}
+        {% if file.note %}
+          <div style="color: var(--muted); margin-top: 0.3em;">{{ file.note }}</div>
+        {% endif %}
+        <div style="color: var(--muted); font-size: 0.85em; margin-top: 0.3em;">
+          Uploaded {{ file.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+        </div>
+        <details style="margin-top: 0.5em;">
+          <summary>Preview extracted text</summary>
+          <pre style="white-space: pre-wrap; max-height: 240px; overflow-y: auto; background: white; padding: 0.6em; border: 1px solid var(--border); border-radius: 4px;">{{ file.extracted_text[:2000] }}{% if file.extracted_text | length > 2000 %}
+
+… ({{ file.extracted_text | length - 2000 }} more characters truncated)
+{% endif %}</pre>
+        </details>
+        <form method="post" action="/context/{{ file.id }}/delete" style="margin-top: 0.6em;">
+          <button type="submit" class="danger">Remove</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% endblock %}
