@@ -28,17 +28,25 @@ from resumeai.renderer.render import render_tailored_resume
 from resumeai.runs.events import RunEventBus
 from resumeai.runs.models import Run, RunEvent, RunStatus, TailorRequest
 from resumeai.runs.store import update_run
+from resumeai.verifier.verifier import (
+    VerifierError,
+    fallback_concerns_result,
+    verify_resume,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from resumeai.agent.models import TailoredResume
     from resumeai.context_files.models import ContextFile
     from resumeai.context_files.store import ContextFileStore
     from resumeai.docs.client import DocsClient
+    from resumeai.jd.models import JobRequirements
     from resumeai.llm.client import LLMClient
     from resumeai.runs.store import RunsStore
     from resumeai.settings.models import GoogleCredentials
     from resumeai.settings.store import SettingsStore
+    from resumeai.verifier.models import VerificationResult
 
 
 DEFAULT_CONTEXT_ROOT = Path("UserContext")
@@ -189,18 +197,34 @@ class TailoringOrchestrator:
         await self._step(run_id, RunStatus.RENDERING, "writing tailored Google Doc")
         client = self._build_docs_client()
         result = await asyncio.to_thread(render_tailored_resume, tailored, template_doc_id, client)
+        update_run(self._runs, run_id, result=result)
+
+        # Step 6: verify (QC pass — never blocks a SUCCEEDED run, surfaces
+        # findings on the run detail page so the user can review).
+        await self._step(run_id, RunStatus.VERIFYING, "running QC verification")
+        verification = await asyncio.to_thread(self._verify_safely, requirements, tailored)
+        update_run(self._runs, run_id, verification=verification)
 
         # Done.
         finished = update_run(
             self._runs,
             run_id,
             status=RunStatus.SUCCEEDED,
-            detail="render complete",
-            result=result,
+            detail="render + verification complete",
         )
-        await self._publish(run_id, RunStatus.SUCCEEDED, "render complete")
+        await self._publish(run_id, RunStatus.SUCCEEDED, "render + verification complete")
         await self._event_bus.close(run_id)
         return finished
+
+    def _verify_safely(
+        self, requirements: JobRequirements, tailored: TailoredResume
+    ) -> VerificationResult:
+        """Run verification but never let it block the run — fall back to a
+        synthetic ``CONCERNS`` result on any failure."""
+        try:
+            return verify_resume(requirements, tailored, self._llm)
+        except (VerifierError, OSError, RuntimeError) as exc:
+            return fallback_concerns_result(f"{type(exc).__name__}: {exc}")
 
     async def _step(self, run_id: str, status: RunStatus, detail: str) -> None:
         update_run(self._runs, run_id, status=status, detail=detail)

@@ -77,6 +77,40 @@
 {% endif %}
 {% endif %}
 
+{% if run.verification %}
+<h2>Verification</h2>
+<div class="card">
+  <p>
+    <strong>Status:</strong>
+    {% if run.verification.status.value == 'passed' %}
+      <span class="status-good">passed</span>
+    {% elif run.verification.status.value == 'concerns' %}
+      <span class="status-warn">concerns</span>
+    {% else %}
+      <span class="status-warn">failed</span>
+    {% endif %}
+  </p>
+  {% if run.verification.summary %}<p>{{ run.verification.summary }}</p>{% endif %}
+  {% if run.verification.issues %}
+    <h3 style="margin-top: 1em;">Issues ({{ run.verification.issues | length }})</h3>
+    <ul>
+      {% for issue in run.verification.issues %}
+        <li>
+          <strong>[{{ issue.severity.value | upper }}]</strong>
+          <code>{{ issue.category }}</code> — {{ issue.message }}
+          {% if issue.suggestion %}<br><em>Suggestion:</em> {{ issue.suggestion }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p><em>No issues raised.</em></p>
+  {% endif %}
+  {% if run.verification.rationale %}
+    <p style="color: var(--muted); margin-top: 1em;">{{ run.verification.rationale }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
 <p><a class="button secondary" href="/runs">← All runs</a> <a class="button" href="/tailor">New run</a></p>
 
 {% endblock %}

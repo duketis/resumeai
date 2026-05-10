@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from resumeai.agent.models import TailoredResume
 from resumeai.jd.models import JobRequirements
 from resumeai.renderer.models import RenderResult
+from resumeai.verifier.models import VerificationResult
 
 
 class RunStatus(StrEnum):
@@ -22,6 +23,7 @@ class RunStatus(StrEnum):
     LOADING_CONTEXT = "loading_context"
     TAILORING = "tailoring"
     RENDERING = "rendering"
+    VERIFYING = "verifying"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 
@@ -80,3 +82,4 @@ class Run(BaseModel):
     requirements: JobRequirements | None = None
     tailored: TailoredResume | None = None
     result: RenderResult | None = None
+    verification: VerificationResult | None = None
