@@ -29,7 +29,7 @@ def _empty_pdf() -> bytes:
 def test_context_page_renders_empty_state(client: TestClient) -> None:
     response = client.get("/context")
     assert response.status_code == 200
-    assert "No context files yet" in response.text
+    assert "Nothing in your context pool yet" in response.text
 
 
 def test_context_page_lists_uploaded_files(

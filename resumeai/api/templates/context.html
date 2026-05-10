@@ -2,9 +2,16 @@
 {% block title %}Context — resumeai{% endblock %}
 {% block content %}
 
-<h2>Context files</h2>
+<h2>Context</h2>
 
-<p>Upload PDFs, CSVs, text, or markdown files that the tailoring agent should consider alongside your resume base. Add a git audit CSV, a project portfolio PDF, hand-written notes about a side project, anything that helps the agent pick the right experience for a JD.</p>
+<p>Everything you add here is your <strong>collective context pool</strong>. The tailoring agent reads <em>all</em> of it on every run — uploaded files, scanned project directories, pasted snippets — and picks what's most relevant per job description. Add as much as you want; nothing is exclusive of anything else, and nothing gets deleted between runs unless you remove it.</p>
+
+<p>Three ways to add context, all additive:</p>
+<ul style="margin-top: -0.4em;">
+  <li><strong>Upload a file</strong> — PDFs, CSVs, text, markdown. Best for structured docs, exports, portfolio PDFs, prior resumes.</li>
+  <li><strong>Scan a local project</strong> — README + structure + your git history pulled into one entry. Best for code projects you've shipped.</li>
+  <li><strong>Paste a snippet</strong> — free-text typed inline. Best for notes, comments, instructions to the agent ("don't include X for Y jobs"), copy-pasted bits.</li>
+</ul>
 
 <h3>Upload a file</h3>
 <form method="post" action="/context" enctype="multipart/form-data" class="card">
@@ -16,8 +23,8 @@
   <p><button type="submit">Upload file</button></p>
 </form>
 
-<h3>Or scan a local project directory</h3>
-<p style="color: var(--muted);">Point at any project directory on your machine. Scanner pulls the README, the top-level structure, and (if it's a git repo) your authored commit history into a single context file. Privacy: scripts skip <code>.env</code>, <code>credentials*</code>, <code>node_modules</code>, etc. Re-scan = remove + re-add.</p>
+<h3>Scan a local project directory</h3>
+<p style="color: var(--muted);">Point at any project directory on your machine. Scanner pulls the README, the top-level structure, and (if it's a git repo) your authored commit history into a single entry that joins everything else above. Privacy: skips <code>.env</code>, <code>credentials*</code>, <code>node_modules</code>, etc. Re-scan = remove + re-add.</p>
 <form method="post" action="/context/project" class="card">
   <p><strong>Absolute path</strong> (eg <code>/Users/jonathan/Documents/personal/jobai</code>):</p>
   <input type="text" name="path" required placeholder="/path/to/your/project">
@@ -32,8 +39,8 @@
   <p><button type="submit">Scan project</button></p>
 </form>
 
-<h3>Or paste a text snippet</h3>
-<p style="color: var(--muted);">Use this for free-text notes about other uploads, copy-pasted bits of context, comments to the agent — anything you want to type instead of upload.</p>
+<h3>Paste a text snippet</h3>
+<p style="color: var(--muted);">For free-text typed inline alongside everything else. Notes about your uploads, copy-pasted bits, instructions to the agent, anything you'd rather type than save as a file. Adds to the same pool.</p>
 <form method="post" action="/context/snippet" class="card">
   <p><strong>Name</strong> (what to call this snippet):</p>
   <input type="text" name="name" required placeholder="2026 reflection on Acme tenure">
@@ -46,10 +53,10 @@
   <p><button type="submit">Save snippet</button></p>
 </form>
 
-<h2>Uploaded ({{ files | length }})</h2>
+<h2>Your context pool ({{ files | length }} item{% if files | length != 1 %}s{% endif %})</h2>
 
 {% if not files %}
-  <p>No context files yet. Upload one above.</p>
+  <p>Nothing in your context pool yet. Use any of the forms above to add to it — files, scanned projects, snippets, all together.</p>
 {% else %}
   <ul style="list-style: none; padding: 0;">
     {% for file in files %}
