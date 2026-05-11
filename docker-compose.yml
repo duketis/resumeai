@@ -1,0 +1,22 @@
+services:
+  resumeai:
+    build: .
+    image: resumeai:local
+    container_name: resumeai
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      # Persistent run + settings storage on the host.
+      - ./runs:/data/runs
+      - ./UserContext:/data/UserContext
+      - resumeai-db:/root/.resumeai
+
+      # Claude CLI auth. The host keychain isn't readable from the container,
+      # so we project the OAuth token into a file the CLI reads on startup.
+      # Run ``./Tools/export-claude-credentials.sh`` once before
+      # ``docker compose up`` to populate ./_docker_claude/.credentials.json.
+      - ./_docker_claude:/root/.claude
+
+volumes:
+  resumeai-db:
