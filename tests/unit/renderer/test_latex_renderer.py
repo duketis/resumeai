@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -28,10 +27,6 @@ from resumeai.renderer.latex_renderer import (
     tex_escape,
 )
 from resumeai.renderer.models import RenderError, RenderStatus
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
 
 _TECTONIC_AVAILABLE = shutil.which("tectonic") is not None
 _skip_no_tectonic = pytest.mark.skipif(
@@ -119,6 +114,42 @@ class TestTexEscape:
         assert out == r"\$ \& \%"
         assert "textbackslash" not in out
 
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            # Arrows -- master-resume.txt contains "native ↔ web messaging"
+            # and the agent emitted "2021 → 2021" for a work-history period;
+            # the default Latin Modern font can't render either, so we
+            # substitute the LaTeX equivalent instead of leaving a missing
+            # glyph box in the rendered PDF.
+            ("native ↔ web", r"native $\leftrightarrow$ web"),
+            ("2021 → 2025", r"2021 $\to$ 2025"),
+            ("← back", r"$\leftarrow$ back"),
+            # Dashes
+            ("2020 – 2025", "2020 -- 2025"),
+            ("a—b", "a---b"),
+            # Smart quotes
+            ("“hello”", "``hello''"),
+            ("it’s", "it's"),
+            # Misc symbols
+            ("…end", r"\ldots{}end"),
+            ("• bullet", r"\textbullet{} bullet"),
+            ("≥90%", r"$\geq$90\%"),
+            ("± 0.5", r"$\pm$ 0.5"),
+            ("100°C", r"100\textdegree{}C"),
+        ],
+    )
+    def test_unicode_typographic_substitutions(self, raw: str, expected: str) -> None:
+        """Common Unicode the default font can't render is rewritten to its
+        LaTeX equivalent. Applied AFTER the ASCII escape pass so the
+        inserted LaTeX commands aren't themselves re-escaped."""
+        assert tex_escape(raw) == expected
+
+    def test_unicode_substitutions_compose_with_ascii_escapes(self) -> None:
+        # Special chars AND unicode in the same string -- both pass cleanly.
+        out = tex_escape("R&D → 100%")
+        assert out == r"R\&D $\to$ 100\%"
+
 
 # ---- render_tex ------------------------------------------------------------
 
@@ -132,9 +163,7 @@ class TestRenderTex:
         assert r"\begin{document}" in out
         assert r"\end{document}" in out
 
-    def test_full_resume_includes_all_sections(
-        self, full_tailored: TailoredResume
-    ) -> None:
+    def test_full_resume_includes_all_sections(self, full_tailored: TailoredResume) -> None:
         out = render_tex(full_tailored)
         assert r"\section{Profile}" in out
         assert r"\section{Technical Skills}" in out
@@ -215,9 +244,7 @@ class TestCompilePdf:
         assert pdf.startswith(b"%PDF-")
         assert (tmp_path / "resume.pdf").exists()
 
-    def test_missing_tectonic_raises(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_tectonic_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(
             "resumeai.renderer.latex_renderer.shutil.which",
             lambda _cmd: None,
@@ -231,19 +258,40 @@ class TestCompilePdf:
         with pytest.raises(RenderError, match="tectonic compile failed"):
             compile_pdf(r"\documentclass{article}\begin{document}OOPS", tmp_path)
 
+    @_skip_no_tectonic
+    def test_compiles_with_relative_output_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Regression: orchestrator passes a relative ``output_dir`` like
+        ``runs/<run_id>``. With ``cwd=output_dir``, passing the full path
+        to tectonic doubled the prefix and the file was not found. The
+        fix is to pass the basename, not ``str(tex_path)``."""
+        monkeypatch.chdir(tmp_path)
+        rel_dir = Path("runs/r1")
+        tex = (
+            r"\documentclass{article}"
+            "\n"
+            r"\begin{document}Hi\end{document}"
+            "\n"
+        )
+        pdf = compile_pdf(tex, rel_dir)
+        assert pdf.startswith(b"%PDF-")
+        assert (tmp_path / rel_dir / "resume.pdf").exists()
+
 
 # ---- end-to-end ------------------------------------------------------------
 
 
 class TestRenderTailoredResumeLatex:
     @_skip_no_tectonic
-    def test_end_to_end(
-        self, full_tailored: TailoredResume, tmp_path: Path
-    ) -> None:
-        result = render_tailored_resume_latex(full_tailored, tmp_path / "run-001")
+    def test_end_to_end(self, full_tailored: TailoredResume, tmp_path: Path) -> None:
+        out_dir = tmp_path / "run-001"
+        result = render_tailored_resume_latex(full_tailored, out_dir)
         assert result.doc_id == "run-001"
         assert result.doc_url.startswith("file://")
-        assert result.pdf_bytes.startswith(b"%PDF-")
+        pdf_on_disk = out_dir / "resume.pdf"
+        assert pdf_on_disk.read_bytes().startswith(b"%PDF-")
+        assert result.pdf_size_bytes == pdf_on_disk.stat().st_size
         # Five known sections always produce a diff entry, REPLACED or SKIPPED.
         assert len(result.diffs) == 5
         kinds = {d.kind for d in result.diffs}
@@ -254,6 +302,24 @@ class TestRenderTailoredResumeLatex:
             "education",
             "certifications",
         }
+
+    @_skip_no_tectonic
+    def test_end_to_end_with_relative_output_dir(
+        self,
+        full_tailored: TailoredResume,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # Regression: production passes ``runs/<run_id>`` (relative). The
+        # ``doc_url`` needs to be a valid ``file://`` URI, which requires
+        # the resolved absolute path.
+        monkeypatch.chdir(tmp_path)
+        result = render_tailored_resume_latex(full_tailored, Path("runs") / "run-relative")
+        assert result.doc_id == "run-relative"
+        assert result.doc_url.startswith("file://")
+        pdf_on_disk = tmp_path / "runs" / "run-relative" / "resume.pdf"
+        assert pdf_on_disk.read_bytes().startswith(b"%PDF-")
+        assert result.pdf_size_bytes == pdf_on_disk.stat().st_size
 
     @_skip_no_tectonic
     def test_diff_status_reflects_section_content(

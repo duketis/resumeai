@@ -34,11 +34,16 @@ def test_render_result_requires_doc_id_and_url() -> None:
 def test_render_result_round_trips() -> None:
     result = RenderResult(
         doc_id="d",
-        doc_url="https://docs.google.com/document/d/d/edit",
-        pdf_bytes=b"%PDF",
+        doc_url="file:///tmp/runs/d/resume.pdf",
+        pdf_size_bytes=4242,
         diffs=(RenderDiff(kind="summary", status=RenderStatus.SKIPPED_EMPTY),),
     )
     assert RenderResult.model_validate_json(result.model_dump_json()) == result
+
+
+def test_render_result_rejects_negative_size() -> None:
+    with pytest.raises(ValidationError):
+        RenderResult(doc_id="d", doc_url="file:///x", pdf_size_bytes=-1)
 
 
 def test_render_status_values_are_stable() -> None:

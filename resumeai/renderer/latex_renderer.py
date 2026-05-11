@@ -57,20 +57,64 @@ _LATEX_SIMPLE_ESCAPES: tuple[tuple[str, str], ...] = (
 # or the loop will re-escape it. Plain ASCII letters wrapped in NULs is safe.
 _BACKSLASH_SENTINEL = "\x00RESUMEAIBSLASH\x00"
 
+# Typographic Unicode that the default Latin Modern font can't render
+# (or renders as a missing-glyph box). The agent and the user's source
+# material both emit these; we substitute the LaTeX equivalent so the
+# PDF stays clean. Applied AFTER the ASCII escape pass so the backslash
+# sentinel doesn't eat the LaTeX commands we introduce here.
+_LATEX_UNICODE_MAP: tuple[tuple[str, str], ...] = (
+    # Arrows
+    ("↔", r"$\leftrightarrow$"),
+    ("→", r"$\to$"),
+    ("←", r"$\leftarrow$"),
+    ("↑", r"$\uparrow$"),
+    ("↓", r"$\downarrow$"),
+    ("⇒", r"$\Rightarrow$"),
+    ("⇐", r"$\Leftarrow$"),
+    # Dashes
+    ("–", "--"),
+    ("—", "---"),
+    # Ellipsis / bullet
+    ("…", r"\ldots{}"),
+    ("•", r"\textbullet{}"),
+    # Math relations
+    ("≤", r"$\leq$"),
+    ("≥", r"$\geq$"),
+    ("≠", r"$\neq$"),
+    ("±", r"$\pm$"),
+    ("×", r"$\times$"),
+    ("÷", r"$\div$"),
+    # Symbols
+    ("°", r"\textdegree{}"),
+    ("©", r"\textcopyright{}"),
+    ("®", r"\textregistered{}"),
+    ("™", r"\texttrademark{}"),
+    # Smart quotes
+    ("“", "``"),
+    ("”", "''"),
+    ("‘", "`"),
+    ("’", "'"),
+)
+
 
 def tex_escape(text: str | None) -> str:
     """Escape LaTeX special characters in plain user text. ``None`` -> ``""``.
 
     The escape is single-pass safe: backslash is rewritten to a sentinel
     first so the subsequent ``{`` and ``}`` rules can't re-escape the
-    braces of the ``\\textbackslash{}`` replacement.
+    braces of the ``\\textbackslash{}`` replacement. The typographic
+    Unicode pass runs last so its inserted LaTeX commands aren't
+    re-escaped.
     """
     if not text:
         return ""
     out = text.replace("\\", _BACKSLASH_SENTINEL)
     for char, replacement in _LATEX_SIMPLE_ESCAPES:
         out = out.replace(char, replacement)
-    return out.replace(_BACKSLASH_SENTINEL, r"\textbackslash{}")
+    out = out.replace(_BACKSLASH_SENTINEL, r"\textbackslash{}")
+    for char, replacement in _LATEX_UNICODE_MAP:
+        out = out.replace(char, replacement)
+    return out
 
 
 def render_tex(
@@ -98,16 +142,18 @@ def compile_pdf(
     stem: str = "resume",
 ) -> bytes:
     """Write ``tex_content`` and compile it via tectonic. Returns PDF bytes."""
-    if shutil.which("tectonic") is None:
-        raise RenderError(
-            "tectonic not found on PATH. Install with `brew install tectonic`."
-        )
+    tectonic = shutil.which("tectonic")
+    if tectonic is None:
+        raise RenderError("tectonic not found on PATH. Install with `brew install tectonic`.")
     output_dir.mkdir(parents=True, exist_ok=True)
     tex_path = output_dir / f"{stem}.tex"
     pdf_path = output_dir / f"{stem}.pdf"
     tex_path.write_text(tex_content, encoding="utf-8")
+    # ``cwd=output_dir`` means tectonic must see the input as just the filename;
+    # passing the full path here would compose with cwd and look for the file
+    # at ``<output_dir>/<output_dir>/<stem>.tex`` when output_dir is relative.
     proc = subprocess.run(  # noqa: S603 -- args are constants, paths controlled
-        ["tectonic", "--chatter=minimal", str(tex_path)],
+        [tectonic, "--chatter=minimal", tex_path.name],
         capture_output=True,
         text=True,
         check=False,
@@ -129,11 +175,11 @@ def render_tailored_resume_latex(
     templates_dir: Path | None = None,
 ) -> RenderResult:
     """End-to-end: TailoredResume -> .tex on disk -> PDF on disk -> RenderResult."""
-    tex_content = render_tex(
-        tailored, template_name=template_name, templates_dir=templates_dir
-    )
+    tex_content = render_tex(tailored, template_name=template_name, templates_dir=templates_dir)
     pdf_bytes = compile_pdf(tex_content, output_dir)
-    pdf_path = output_dir / "resume.pdf"
+    # Resolve so callers passing a relative ``runs/<run_id>`` get a valid
+    # ``file://`` URL -- Path.as_uri() rejects relative paths.
+    pdf_path = (output_dir / "resume.pdf").resolve()
     diffs = tuple(
         RenderDiff(
             kind=kind,
@@ -149,7 +195,7 @@ def render_tailored_resume_latex(
     return RenderResult(
         doc_id=output_dir.name or "resume",
         doc_url=pdf_path.as_uri(),
-        pdf_bytes=pdf_bytes,
+        pdf_size_bytes=len(pdf_bytes),
         diffs=diffs,
     )
 
@@ -168,7 +214,7 @@ def _build_env(templates_dir: Path) -> jinja2.Environment:
         comment_end_string="}",
         trim_blocks=True,
         lstrip_blocks=True,
-        autoescape=False,
+        autoescape=False,  # noqa: S701 -- output is LaTeX; we tex_escape() user data ourselves
         keep_trailing_newline=True,
     )
     env.filters["format_period"] = _format_education_period

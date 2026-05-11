@@ -51,7 +51,7 @@
 <h2>Result</h2>
 <div class="card">
   <p><strong>Tailored doc:</strong> <a href="{{ run.result.doc_url }}" target="_blank" rel="noopener">{{ run.result.doc_url }}</a></p>
-  <p><strong>PDF:</strong> {{ run.result.pdf_bytes | length }} bytes</p>
+  <p><strong>PDF:</strong> {{ run.result.pdf_size_bytes }} bytes</p>
   <h3>Section diffs</h3>
   <ul>
     {% for diff in run.result.diffs %}

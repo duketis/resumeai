@@ -33,13 +33,18 @@ class RenderDiff(BaseModel):
 
 
 class RenderResult(BaseModel):
-    """The output of a full render."""
+    """The output of a full render.
+
+    The rendered PDF is written to disk by the renderer and addressed via
+    ``doc_url``. We don't carry the raw bytes on the model because the Run
+    record is JSON-serialised into SQLite and PDF bytes aren't UTF-8.
+    """
 
     model_config = ConfigDict(frozen=True)
 
     doc_id: str = Field(min_length=1)
     doc_url: str = Field(min_length=1)
-    pdf_bytes: bytes = b""
+    pdf_size_bytes: int = Field(default=0, ge=0)
     diffs: tuple[RenderDiff, ...] = ()
 
 
