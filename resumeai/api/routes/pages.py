@@ -8,10 +8,11 @@ Settings page pattern.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from resumeai.api.deps import get_orchestrator, get_runs_store
 from resumeai.api.templating import templates
@@ -91,6 +92,48 @@ def run_detail_page(
             "auto_refresh": not run.status.is_terminal,
         },
     )
+
+
+@router.get("/runs/{run_id}/pdf")
+def run_pdf(
+    run_id: str,
+    runs: RunsStore = Depends(get_runs_store),
+) -> FileResponse:
+    """Stream the run's rendered PDF over HTTP.
+
+    Browsers won't navigate to ``file://`` URLs from an ``http://`` page,
+    so the run-detail template + jobai integration both need an HTTP
+    surface for the PDF. ``inline`` Content-Disposition lets the browser
+    render the PDF in-tab rather than forcing a download.
+    """
+    run = runs.get(run_id)
+    if run is None or run.result is None:
+        raise HTTPException(status_code=404, detail=f"no PDF for run {run_id!r}")
+    pdf_path = _pdf_path_for_run(run_id)
+    if pdf_path is None:
+        raise HTTPException(status_code=404, detail=f"PDF missing on disk for run {run_id!r}")
+    return FileResponse(
+        pdf_path,
+        media_type="application/pdf",
+        filename=pdf_path.name,
+        content_disposition_type="inline",
+    )
+
+
+def _pdf_path_for_run(run_id: str) -> Path | None:
+    """Resolve the on-disk PDF for ``run_id``.
+
+    The render step writes a labelled stem like
+    ``Jonathan Duketis - <Company> - <Title>.pdf`` (since commit
+    ``47fc61b``), so the filename is dynamic per run. Returning the
+    most-recently-modified ``*.pdf`` under ``runs/<run_id>/`` keeps the
+    route resilient to filename-stem changes.
+    """
+    run_dir = Path("runs") / run_id
+    if not run_dir.is_dir():
+        return None
+    pdfs = sorted(run_dir.glob("*.pdf"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return pdfs[0] if pdfs else None
 
 
 # -- helpers exported for tests --------------------------------------------
