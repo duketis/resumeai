@@ -50,9 +50,7 @@ class SqliteSettingsStore:
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
         # check_same_thread=False so the connection survives FastAPI's
         # worker-threadpool dispatch.
-        self._conn = sqlite3.connect(
-            self._db_path, isolation_level=None, check_same_thread=False
-        )
+        self._conn = sqlite3.connect(self._db_path, isolation_level=None, check_same_thread=False)
         self._conn.executescript(_SCHEMA_SQL)
         self._db_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
 

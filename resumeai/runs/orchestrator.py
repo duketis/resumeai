@@ -189,9 +189,7 @@ class TailoringOrchestrator:
         # Step 5: render via LaTeX -> tectonic -> PDF.
         await self._step(run_id, RunStatus.RENDERING, "rendering tailored PDF")
         output_dir = self._runs_root / run_id
-        result = await asyncio.to_thread(
-            render_tailored_resume_latex, tailored, output_dir
-        )
+        result = await asyncio.to_thread(render_tailored_resume_latex, tailored, output_dir)
         update_run(self._runs, run_id, result=result)
 
         # Step 6: verify (QC pass — never blocks a SUCCEEDED run, surfaces
@@ -229,7 +227,6 @@ class TailoringOrchestrator:
         await self._event_bus.publish(
             RunEvent(run_id=run_id, status=status, detail=detail, at=_utcnow())
         )
-
 
 
 def _generate_run_id() -> str:
