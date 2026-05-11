@@ -38,7 +38,7 @@ no preamble) matching this exact schema:
 
 {
   "name": "string — the candidate's name, copied verbatim",
-  "headline": "string — one short line tailored to the JD; may rewrite",
+  "headline": "string — short tailored line; may only name techs in the candidate's skills list",
   "contact": {
     "email": "string — copied verbatim",
     "phone": "string or null — passthrough",
@@ -107,6 +107,12 @@ Hard rules:
   file.
 - Reorder skills so the JD's required skills appear first. Drop skills the
   candidate doesn't have. Don't add skills not in any context source.
+- This rule is absolute for ``headline``, ``summary``, and ``skills``: do NOT
+  name a JD-required technology that's missing from the candidate's context,
+  even if the JD asks for it explicitly. If the candidate doesn't have it,
+  it does not appear ANYWHERE in the tailored resume. Do not paraphrase a
+  missing tech as a related one (e.g. "Python" is not a substitute for
+  "Django"; "AWS Lambda" is not a substitute for "GCP Cloud Functions").
 - 4-7 bullets per work_history entry, descending importance.
 - Each bullet ≤25 words, action verb first, quantified where the source
   supports it.

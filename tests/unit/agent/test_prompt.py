@@ -66,6 +66,18 @@ def test_system_prompt_states_anti_fabrication_rule() -> None:
     assert "Never invent" in SYSTEM_PROMPT
 
 
+def test_system_prompt_bans_jd_required_techs_missing_from_candidate() -> None:
+    """Regression: agent emitted ``Python/Django`` in the headline because the
+    JD required Django, even though Django was nowhere in the candidate's
+    context. The prompt now explicitly forbids that."""
+    assert "do NOT" in SYSTEM_PROMPT
+    assert "headline" in SYSTEM_PROMPT
+    assert "summary" in SYSTEM_PROMPT
+    assert "missing from the candidate" in SYSTEM_PROMPT
+    # Spot-check the example: Python is not a substitute for Django.
+    assert "Python" in SYSTEM_PROMPT and "Django" in SYSTEM_PROMPT
+
+
 # -- build_user_prompt -------------------------------------------------------
 
 
