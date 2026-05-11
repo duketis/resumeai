@@ -156,6 +156,13 @@ def test_tailor_page_renders_with_no_query_params(client: TestClient) -> None:
     assert "<form" in response.text.lower() or "jd_url" in response.text
 
 
+def test_root_url_redirects_to_tailor(client: TestClient) -> None:
+    """Bare ``/`` lands on the Tailor page rather than a JSON 404."""
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 307
+    assert response.headers["location"] == "/tailor"
+
+
 def test_runs_page_renders_with_flash_query_param(client: TestClient) -> None:
     response = client.get("/runs?flash=Hello+world")
     assert response.status_code == 200

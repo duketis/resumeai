@@ -28,6 +28,12 @@ router = APIRouter()
 _BACKGROUND_TASKS: set[asyncio.Task[object]] = set()
 
 
+@router.get("/", include_in_schema=False)
+def root_redirect() -> RedirectResponse:
+    """Bare ``/`` lands on the Tailor page rather than a 404."""
+    return RedirectResponse("/tailor", status_code=307)
+
+
 @router.get("/tailor", response_class=HTMLResponse)
 def tailor_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(
