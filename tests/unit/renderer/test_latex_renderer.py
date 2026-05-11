@@ -443,3 +443,66 @@ class TestRenderTailoredResumeLatex:
         assert statuses["work_history"] is RenderStatus.SKIPPED_EMPTY
         assert statuses["education"] is RenderStatus.SKIPPED_EMPTY
         assert statuses["certifications"] is RenderStatus.SKIPPED_EMPTY
+
+
+# ---- internals -------------------------------------------------------------
+
+
+class TestFormatEducationPeriod:
+    """Covers every branch of the Jinja ``format_period`` filter."""
+
+    @pytest.mark.parametrize(
+        ("edu", "expected"),
+        [
+            ({"year_start": 2018, "year_end": 2020}, "2018--2020"),
+            # Same start and end → just the year, no range.
+            ({"year_start": 2020, "year_end": 2020}, "2020"),
+            # Only end is set → "<year>".
+            ({"year_end": 2020}, "2020"),
+            # Only start is set → "<start>--present".
+            ({"year_start": 2018}, "2018--present"),
+            # Neither field → empty string.
+            ({}, ""),
+        ],
+    )
+    def test_period_branches(self, edu: dict[str, int], expected: str) -> None:
+        from resumeai.renderer.latex_renderer import _format_education_period  # noqa: PLC0415
+
+        assert _format_education_period(edu) == expected
+
+
+class TestSectionHasContent:
+    """Covers the unknown-kind fallback branch of ``_section_has_content``."""
+
+    def test_unknown_kind_returns_false(self) -> None:
+        from resumeai.renderer.latex_renderer import _section_has_content  # noqa: PLC0415
+
+        tailored = TailoredResume(name="A", contact=Contact(email="x@y.co"))
+        assert _section_has_content(tailored, "bogus_kind") is False
+
+
+class TestCompilePdfMissingPdf:
+    """Covers the ``tectonic returned 0 but pdf is missing`` branch."""
+
+    def test_raises_when_tectonic_exits_zero_without_writing_pdf(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "resumeai.renderer.latex_renderer.shutil.which",
+            lambda _cmd: "/usr/local/bin/tectonic",
+        )
+
+        class _FakeProc:
+            returncode = 0
+            stderr = ""
+            stdout = ""
+
+        monkeypatch.setattr(
+            "resumeai.renderer.latex_renderer.subprocess.run",
+            lambda *_a, **_k: _FakeProc(),
+        )
+
+        with pytest.raises(RenderError, match="returned 0 but"):
+            compile_pdf(r"\documentclass{article}\begin{document}x\end{document}", tmp_path)

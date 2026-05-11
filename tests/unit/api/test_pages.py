@@ -145,3 +145,103 @@ def test_clear_runs_route_works_on_empty_store(
     response = client.post("/runs/clear", follow_redirects=False)
     assert response.status_code == 303
     assert "Cleared+0+run" in response.headers["location"]
+
+
+# -- HTML pages: GET routes -------------------------------------------------
+
+
+def test_tailor_page_renders_with_no_query_params(client: TestClient) -> None:
+    response = client.get("/tailor")
+    assert response.status_code == 200
+    assert "<form" in response.text.lower() or "jd_url" in response.text
+
+
+def test_runs_page_renders_with_flash_query_param(client: TestClient) -> None:
+    response = client.get("/runs?flash=Hello+world")
+    assert response.status_code == 200
+    assert "Hello world" in response.text
+
+
+def test_run_detail_page_renders_for_known_run(client: TestClient, runs: InMemoryRunsStore) -> None:
+    when = datetime(2026, 5, 11, tzinfo=UTC)
+    runs.save(
+        Run(
+            id="run_detail_ok",
+            request=TailorRequest(jd_text="x"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+    )
+    response = client.get("/runs/run_detail_ok")
+    assert response.status_code == 200
+    assert "run_detail_ok" in response.text
+
+
+def test_run_detail_page_404_for_unknown_run(client: TestClient) -> None:
+    response = client.get("/runs/run_does_not_exist")
+    assert response.status_code == 404
+
+
+# -- HTML form-submission: POST /tailor ------------------------------------
+
+
+def test_post_tailor_form_creates_run_and_redirects_to_run_detail(
+    client: TestClient,
+    runs: InMemoryRunsStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Submitting the Tailor form schedules execute and 303s to /runs/<id>."""
+
+    async def fake_execute(self: object, run_id: str) -> Run:
+        when = datetime(2026, 5, 11, tzinfo=UTC)
+        return Run(
+            id=run_id,
+            request=TailorRequest(jd_text="x"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+
+    monkeypatch.setattr(
+        "resumeai.runs.orchestrator.TailoringOrchestrator.execute",
+        fake_execute,
+    )
+
+    response = client.post(
+        "/tailor",
+        data={"jd_text": "paste body"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    location = response.headers["location"]
+    assert location.startswith("/runs/run_")
+    run_id = location.removeprefix("/runs/")
+    assert runs.get(run_id) is not None
+
+
+def test_post_tailor_form_redirects_with_error_when_request_invalid(
+    client: TestClient,
+) -> None:
+    """Empty form (no jd_url + no jd_text) fails validation -> 303 to /tailor."""
+    response = client.post("/tailor", data={}, follow_redirects=False)
+    assert response.status_code == 303
+    assert "/tailor?error=" in response.headers["location"]
+
+
+# -- get_settings_store dep helper -----------------------------------------
+
+
+def test_get_settings_store_returns_app_singleton(client: TestClient) -> None:
+    """``get_settings_store`` is exercised by reaching into the app directly."""
+    from fastapi import Request  # noqa: PLC0415
+
+    from resumeai.api.deps import get_settings_store  # noqa: PLC0415
+    from resumeai.settings.store import InMemorySettingsStore  # noqa: PLC0415
+
+    # Pull the wired-up app from the TestClient and synthesise a Request.
+    app = client.app
+    scope = {"type": "http", "app": app}
+    request = Request(scope)
+    store = get_settings_store(request)
+    assert isinstance(store, InMemorySettingsStore)

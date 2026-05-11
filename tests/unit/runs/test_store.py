@@ -242,6 +242,20 @@ def test_clear_on_empty_store_returns_zero(store: RunsStore) -> None:
     assert store.clear() == 0
 
 
+def test_update_run_persists_verification_field(store: RunsStore) -> None:
+    """Covers the ``verification`` branch in ``update_run``."""
+    from resumeai.verifier.models import VerificationResult, VerificationStatus  # noqa: PLC0415
+
+    store.save(_make_run())
+    verification = VerificationResult(
+        status=VerificationStatus.PASSED,
+        summary="ok",
+        rationale="all good",
+    )
+    updated = update_run(store, "run_a", verification=verification)
+    assert updated.verification == verification
+
+
 def test_get_returns_none_for_unparseable_row(tmp_path: Path) -> None:
     db_path = tmp_path / "runs.db"
     store = SqliteRunsStore(db_path=db_path)

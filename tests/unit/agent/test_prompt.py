@@ -330,6 +330,32 @@ def test_user_prompt_renders_cover_letter_without_body() -> None:
     assert "Dear" not in prompt
 
 
+def test_user_prompt_surfaces_master_resume_and_reference_resumes() -> None:
+    """Both authoritative-reference blocks land in the prompt with their
+    rule preambles."""
+    context = UserContext(
+        master_resume="MASTER RESUME BODY HERE",
+        reference_resumes=("REFERENCE ONE TEX BODY", "REFERENCE TWO TEX BODY"),
+    )
+    prompt = build_user_prompt(JobRequirements(title="Eng"), context)
+
+    assert "## Master resume (AUTHORITATIVE" in prompt
+    assert "MASTER RESUME BODY HERE" in prompt
+    assert "## Reference resumes (KNOWN-GOOD" in prompt
+    assert "### Reference 1" in prompt
+    assert "### Reference 2" in prompt
+    assert "REFERENCE ONE TEX BODY" in prompt
+    assert "REFERENCE TWO TEX BODY" in prompt
+
+
+def test_user_prompt_omits_authoritative_refs_when_unset() -> None:
+    """Empty master_resume + reference_resumes => no Authoritative section."""
+    context = UserContext()  # everything blank/empty
+    prompt = build_user_prompt(JobRequirements(title="Eng"), context)
+    assert "Master resume (AUTHORITATIVE" not in prompt
+    assert "Reference resumes (KNOWN-GOOD" not in prompt
+
+
 def test_user_prompt_renders_minimal_project_entry() -> None:
     """Projects with only name + slug still render -- every optional field
     branch in ``_format_project`` is covered by this and the sample-context

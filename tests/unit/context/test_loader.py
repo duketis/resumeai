@@ -338,3 +338,33 @@ def test_projects_tolerate_missing_optional_metadata(tmp_path: Path) -> None:
     assert project.url is None
     assert project.status is None
     assert project.stack is None
+
+
+# -- master resume + reference resumes --------------------------------------
+
+
+def test_master_resume_loaded_from_root_text_file(tmp_path: Path) -> None:
+    (tmp_path / "master-resume.txt").write_text("Authoritative master content here.\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.master_resume == "Authoritative master content here."
+
+
+def test_master_resume_empty_when_file_absent(tmp_path: Path) -> None:
+    ctx = load_user_context(tmp_path)
+    assert ctx.master_resume == ""
+
+
+def test_reference_resumes_loaded_from_root_tex_files(tmp_path: Path) -> None:
+    (tmp_path / "Resume - Acme.tex").write_text("\\documentclass{article}\nAcme\n")
+    (tmp_path / "Resume - Globex.tex").write_text("\\documentclass{article}\nGlobex\n")
+    (tmp_path / "notes.txt").write_text("ignored")
+    ctx = load_user_context(tmp_path)
+    assert len(ctx.reference_resumes) == 2
+    # Sorted alphabetically by filename.
+    assert "Acme" in ctx.reference_resumes[0]
+    assert "Globex" in ctx.reference_resumes[1]
+
+
+def test_reference_resumes_empty_when_no_tex_files(tmp_path: Path) -> None:
+    ctx = load_user_context(tmp_path)
+    assert ctx.reference_resumes == ()
