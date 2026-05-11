@@ -174,3 +174,64 @@ def test_sqlite_persists_across_reopen(tmp_path: Path) -> None:
         assert loaded is not None
     finally:
         b.close()
+
+
+# -- forward-compatibility: tolerate stale rows that no longer validate -----
+
+
+def _inject_unparseable_row(db_path: Path, row_id: str = "stale_row") -> None:
+    """Write a row whose payload contains a value the current schema rejects.
+
+    Mimics pre-pivot data: an old ``RenderStatus`` value (``"failed"``) that
+    is no longer part of the enum. The current loader must skip it without
+    bringing down the runs page or run-detail endpoint.
+    """
+    import json as _json  # noqa: PLC0415
+    import sqlite3 as _sqlite3  # noqa: PLC0415
+
+    when = "2026-05-09T00:00:00+00:00"
+    bad_payload = _json.dumps(
+        {
+            "id": row_id,
+            "request": {"jd_text": "text"},
+            "status": "succeeded",
+            "created_at": when,
+            "updated_at": when,
+            "result": {
+                "doc_id": "x",
+                "doc_url": "file:///x",
+                "pdf_size_bytes": 0,
+                "diffs": [{"kind": "summary", "status": "failed"}],
+            },
+        }
+    )
+    conn = _sqlite3.connect(db_path, isolation_level=None)
+    conn.execute(
+        "INSERT INTO runs (id, payload, created_at, updated_at) VALUES (?, ?, ?, ?)",
+        (row_id, bad_payload, when, when),
+    )
+    conn.close()
+
+
+def test_list_recent_skips_unparseable_rows(tmp_path: Path) -> None:
+    db_path = tmp_path / "runs.db"
+    store = SqliteRunsStore(db_path=db_path)
+    try:
+        store.save(_make_run(run_id="good"))
+        _inject_unparseable_row(db_path, row_id="stale_row")
+        # The bad row is silently skipped; the good row still surfaces.
+        ids = [r.id for r in store.list_recent()]
+        assert ids == ["good"]
+    finally:
+        store.close()
+
+
+def test_get_returns_none_for_unparseable_row(tmp_path: Path) -> None:
+    db_path = tmp_path / "runs.db"
+    store = SqliteRunsStore(db_path=db_path)
+    try:
+        _inject_unparseable_row(db_path, row_id="stale_row")
+        # ``get`` on a stale row degrades to "not found" rather than 500-ing.
+        assert store.get("stale_row") is None
+    finally:
+        store.close()

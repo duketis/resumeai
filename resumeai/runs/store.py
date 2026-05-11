@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
+from pydantic import ValidationError
+
 from resumeai.runs.models import Run, RunStatus
+
+_log = logging.getLogger(__name__)
 
 DEFAULT_DB_PATH = Path("~/.resumeai/resumeai.db").expanduser()
 
@@ -54,7 +59,11 @@ class SqliteRunsStore:
         row = self._conn.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
         if row is None:
             return None
-        return Run.model_validate_json(row[0])
+        try:
+            return Run.model_validate_json(row[0])
+        except ValidationError as exc:
+            _log.warning("skipping unparseable run %r: %s", run_id, exc)
+            return None
 
     def save(self, run: Run) -> None:
         payload = run.model_dump_json()
@@ -74,10 +83,20 @@ class SqliteRunsStore:
 
     def list_recent(self, limit: int = 20) -> list[Run]:
         rows = self._conn.execute(
-            "SELECT payload FROM runs ORDER BY updated_at DESC LIMIT ?",
+            "SELECT id, payload FROM runs ORDER BY updated_at DESC LIMIT ?",
             (max(0, limit),),
         ).fetchall()
-        return [Run.model_validate_json(row[0]) for row in rows]
+        # Tolerate rows that no longer validate against the current schema
+        # (e.g. ``RenderStatus`` values from a pre-pivot enum that's since
+        # been pruned). Skipping the row beats 500-ing the whole runs page;
+        # the bad record is logged so we can decide whether to wipe it.
+        runs: list[Run] = []
+        for row_id, payload in rows:
+            try:
+                runs.append(Run.model_validate_json(payload))
+            except ValidationError as exc:
+                _log.warning("skipping unparseable run row %r: %s", row_id, exc)
+        return runs
 
 
 class InMemoryRunsStore:
