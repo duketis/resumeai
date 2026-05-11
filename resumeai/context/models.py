@@ -92,6 +92,29 @@ class CoverLetterEntry(BaseModel):
     raw_markdown: str = ""
 
 
+class ProjectEntry(BaseModel):
+    """One personal project from ``projects/<slug>.md``.
+
+    Projects live outside ``work_history/`` because they aren't paid
+    engagements; they're the public (or private) side-projects a
+    candidate uses to demonstrate range and engineering discipline.
+    The ``body`` is preserved so the agent can read the candidate's
+    positioning rules (e.g. "never link strategyminer.xyz") verbatim
+    when deciding how to render the project's right-column.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    slug: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    url: str | None = None
+    status: str | None = None
+    stack: str | None = None
+    summary: str = ""
+    bullets: tuple[str, ...] = ()
+    body: str = ""
+
+
 class UserContext(BaseModel):
     """The full materialised context the tailoring agent sees."""
 
@@ -101,6 +124,7 @@ class UserContext(BaseModel):
     work_history: tuple[WorkHistoryEntry, ...] = ()
     git_audit: tuple[GitAuditEntry, ...] = ()
     cover_letters: tuple[CoverLetterEntry, ...] = ()
+    projects: tuple[ProjectEntry, ...] = ()
 
     def is_empty(self) -> bool:
         """True when nothing was loaded (no resume.yaml + no markdown files)."""
@@ -109,4 +133,5 @@ class UserContext(BaseModel):
             and not self.work_history
             and not self.git_audit
             and not self.cover_letters
+            and not self.projects
         )

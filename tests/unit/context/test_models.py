@@ -10,6 +10,7 @@ from resumeai.context.models import (
     CoverLetterEntry,
     Education,
     GitAuditEntry,
+    ProjectEntry,
     ResumeBase,
     UserContext,
     WorkHistoryEntry,
@@ -71,4 +72,14 @@ def test_user_context_not_empty_when_only_git_audit() -> None:
 
 def test_user_context_not_empty_when_only_cover_letters() -> None:
     ctx = UserContext(cover_letters=(CoverLetterEntry(slug="a"),))
+    assert not ctx.is_empty()
+
+
+def test_project_entry_requires_non_empty_name() -> None:
+    with pytest.raises(ValidationError):
+        ProjectEntry(slug="x", name="")
+
+
+def test_user_context_not_empty_when_only_projects() -> None:
+    ctx = UserContext(projects=(ProjectEntry(slug="a", name="a"),))
     assert not ctx.is_empty()

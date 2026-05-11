@@ -6,6 +6,7 @@ Layout the loader expects (rooted at any directory the caller picks):
 - ``work_history/*.md``         — one :class:`WorkHistoryEntry` per file
 - ``git_audit/*.md``            — one :class:`GitAuditEntry` per file
 - ``cover_letters/*.md``        — one :class:`CoverLetterEntry` per file
+- ``projects/*.md``             — one :class:`ProjectEntry` per file
 
 Markdown files use YAML frontmatter for structured metadata + a markdown
 body for narrative content. Bullets are extracted from the body where
@@ -28,6 +29,7 @@ from pydantic import ValidationError
 from resumeai.context.models import (
     CoverLetterEntry,
     GitAuditEntry,
+    ProjectEntry,
     ResumeBase,
     UserContext,
     WorkHistoryEntry,
@@ -55,6 +57,7 @@ def load_user_context(root: Path) -> UserContext:
         work_history=tuple(_load_work_history(root / "work_history")),
         git_audit=tuple(_load_git_audit(root / "git_audit")),
         cover_letters=tuple(_load_cover_letters(root / "cover_letters")),
+        projects=tuple(_load_projects(root / "projects")),
     )
 
 
@@ -136,6 +139,29 @@ def _load_cover_letters(directory: Path) -> list[CoverLetterEntry]:
                 company=_optional_str(fm, "company"),
                 body=body.strip(),
                 raw_markdown=path.read_text(encoding="utf-8"),
+            )
+        )
+    entries.sort(key=lambda e: e.slug)
+    return entries
+
+
+# -- projects ----------------------------------------------------------------
+
+
+def _load_projects(directory: Path) -> list[ProjectEntry]:
+    entries: list[ProjectEntry] = []
+    for path in _markdown_files(directory):
+        fm, body = _parse_frontmatter(path)
+        entries.append(
+            ProjectEntry(
+                slug=path.stem,
+                name=_required_str(fm, "project", path),
+                url=_optional_str(fm, "url"),
+                status=_optional_str(fm, "status"),
+                stack=_optional_str(fm, "stack"),
+                summary=_extract_summary(body),
+                bullets=tuple(_BULLET_RE.findall(body)),
+                body=body.strip(),
             )
         )
     entries.sort(key=lambda e: e.slug)

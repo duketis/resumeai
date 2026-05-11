@@ -45,6 +45,17 @@ def test_loads_committed_sample_context(sample_context_root: Path) -> None:
     assert cover.company == "Acme Corp"
     assert "high-trust team" in cover.body
 
+    # Project
+    assert len(ctx.projects) == 1
+    project = ctx.projects[0]
+    assert project.slug == "sample-tool"
+    assert project.name == "sample-tool"
+    assert project.url == "https://github.com/alex/sample-tool"
+    assert project.stack is not None and "FastAPI" in project.stack
+    assert "code-review showcase" in project.summary
+    assert any("FastAPI surface" in b for b in project.bullets)
+    assert "Important framing" in project.body
+
 
 # -- empty / missing tolerance ----------------------------------------------
 
@@ -62,14 +73,16 @@ def test_returns_empty_context_when_root_is_a_file(tmp_path: Path) -> None:
 
 
 def test_partial_tree_loads_what_exists(tmp_path: Path) -> None:
-    """Only resume.yaml present — work_history/, git_audit/, cover_letters/
-    are all missing. Loader returns the resume and empty tuples."""
+    """Only resume.yaml present — work_history/, git_audit/, cover_letters/,
+    and projects/ are all missing. Loader returns the resume and empty
+    tuples."""
     (tmp_path / "resume.yaml").write_text("name: Alex\ncontact:\n  email: a@example.com\n")
     ctx = load_user_context(tmp_path)
     assert ctx.resume is not None
     assert ctx.work_history == ()
     assert ctx.git_audit == ()
     assert ctx.cover_letters == ()
+    assert ctx.projects == ()
 
 
 # -- resume.yaml error handling ---------------------------------------------
@@ -260,3 +273,68 @@ def test_cover_letter_without_frontmatter_keeps_full_body(tmp_path: Path) -> Non
     assert ctx.cover_letters[0].body == "Just text, no frontmatter"
     assert ctx.cover_letters[0].role is None
     assert ctx.cover_letters[0].company is None
+
+
+# -- projects ----------------------------------------------------------------
+
+
+def test_projects_sort_by_slug(tmp_path: Path) -> None:
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "zeta.md").write_text("---\nproject: Zeta\n---\n\nzeta summary\n")
+    (pr / "alpha.md").write_text("---\nproject: Alpha\n---\n\nalpha summary\n")
+    ctx = load_user_context(tmp_path)
+    assert [p.slug for p in ctx.projects] == ["alpha", "zeta"]
+
+
+def test_projects_extract_summary_bullets_and_body(tmp_path: Path) -> None:
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "x.md").write_text(
+        "---\n"
+        "project: X\n"
+        "url: https://example.com/x\n"
+        "status: alpha\n"
+        "stack: Python, FastAPI\n"
+        "---\n\n"
+        "First paragraph is the summary.\n\n"
+        "- bullet one\n"
+        "- bullet two\n"
+    )
+    ctx = load_user_context(tmp_path)
+    project = ctx.projects[0]
+    assert project.name == "X"
+    assert project.url == "https://example.com/x"
+    assert project.status == "alpha"
+    assert project.stack == "Python, FastAPI"
+    assert project.summary == "First paragraph is the summary."
+    assert project.bullets == ("bullet one", "bullet two")
+    assert project.body.startswith("First paragraph")
+
+
+def test_projects_raises_on_missing_required_project_field(tmp_path: Path) -> None:
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "x.md").write_text("---\nurl: https://example.com\n---\n\nbody\n")
+    with pytest.raises(ContextLoadError, match="project"):
+        load_user_context(tmp_path)
+
+
+def test_projects_skips_non_markdown_files(tmp_path: Path) -> None:
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "x.md").write_text("---\nproject: X\n---\n\nbody\n")
+    (pr / "ignore.txt").write_text("not a markdown file")
+    ctx = load_user_context(tmp_path)
+    assert len(ctx.projects) == 1
+
+
+def test_projects_tolerate_missing_optional_metadata(tmp_path: Path) -> None:
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "x.md").write_text("---\nproject: X\n---\n\nbody\n")
+    ctx = load_user_context(tmp_path)
+    project = ctx.projects[0]
+    assert project.url is None
+    assert project.status is None
+    assert project.stack is None
