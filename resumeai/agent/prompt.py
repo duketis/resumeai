@@ -107,6 +107,16 @@ Hard rules:
   file.
 - Reorder skills so the JD's required skills appear first. Drop skills the
   candidate doesn't have. Don't add skills not in any context source.
+- The ``skills`` list is for concrete technologies ONLY: programming
+  languages, frameworks, libraries, platforms (clouds, OSes), databases,
+  protocols, tools (Docker, Git, etc.). FILTER OUT process / hygiene /
+  methodology items even if the candidate's source ``resume.yaml`` lists
+  them as skills -- e.g. drop "TDD", "structured logging", "conventional
+  commits", "GPG-signed commits", "code review", "pair programming",
+  "agile development", "documentation". Those are habits, not skills, and
+  they read as filler on a tailored resume. If a methodology really wants
+  surfacing (because the JD asks for it), put it in the ``summary`` or a
+  bullet, never in the ``skills`` array.
 - This rule is absolute for ``headline``, ``summary``, and ``skills``: do NOT
   name a JD-required technology that's missing from the candidate's context,
   even if the JD asks for it explicitly. If the candidate doesn't have it,
