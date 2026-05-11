@@ -114,6 +114,16 @@
 \resumeSubHeadingListEnd
 \BLOCK{endif}
 
+%----------KEY ACHIEVEMENTS----------
+\BLOCK{if resume.key_achievements}
+\section{Key Achievements}
+\resumeSubHeadingListStart
+\BLOCK{for achievement in resume.key_achievements}
+  \resumeItem{\VAR{achievement}}
+\BLOCK{endfor}
+\resumeSubHeadingListEnd
+\BLOCK{endif}
+
 %----------EXPERIENCE----------
 \BLOCK{if resume.work_history}
 \section{Professional Experience}
@@ -125,6 +135,32 @@
   \BLOCK{if job.bullets}
   \resumeItemListStart
   \BLOCK{for bullet in job.bullets}
+    \resumeItem{\VAR{bullet.text}}
+  \BLOCK{endfor}
+  \resumeItemListEnd
+  \BLOCK{endif}
+\BLOCK{endfor}
+\resumeSubHeadingListEnd
+\BLOCK{endif}
+
+%----------PERSONAL PROJECTS----------
+\BLOCK{if resume.personal_projects}
+\section{Personal Projects}
+\resumeSubHeadingListStart
+\BLOCK{for project in resume.personal_projects}
+  \BLOCK{set title = '\\textbf{' ~ project.name ~ '}' }\#{}
+  \BLOCK{if project.description}\BLOCK{set title = title ~ ' --- ' ~ project.description }\BLOCK{endif}
+  \BLOCK{if project.stack}\BLOCK{set title = title ~ ' $|$ \\emph{' ~ project.stack ~ '}' }\BLOCK{endif}
+  \BLOCK{if project.link}
+    \resumeProjectHeading
+      {\VAR{title}}{\href{\VAR{project.link}}{\VAR{project.link_label or project.link}}}
+  \BLOCK{else}
+    \resumeProjectHeading
+      {\VAR{title}}{\VAR{project.link_label or ''}}
+  \BLOCK{endif}
+  \BLOCK{if project.bullets}
+  \resumeItemListStart
+  \BLOCK{for bullet in project.bullets}
     \resumeItem{\VAR{bullet.text}}
   \BLOCK{endfor}
   \resumeItemListEnd

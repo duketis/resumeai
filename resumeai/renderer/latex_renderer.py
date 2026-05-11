@@ -32,7 +32,7 @@ from resumeai.renderer.models import (
 )
 
 if TYPE_CHECKING:
-    from resumeai.agent.models import TailoredResume, TailoredWorkEntry
+    from resumeai.agent.models import TailoredProject, TailoredResume, TailoredWorkEntry
     from resumeai.context.models import Education
 
 
@@ -261,6 +261,7 @@ def _escape_resume(tailored: TailoredResume) -> dict[str, Any]:
         "headline": tex_escape(tailored.headline),
         "summary": tex_escape(tailored.summary),
         "skills": tuple(tex_escape(s) for s in tailored.skills),
+        "key_achievements": tuple(tex_escape(a) for a in tailored.key_achievements),
         "certifications": tuple(tex_escape(c) for c in tailored.certifications),
         "rationale": tex_escape(tailored.rationale),
         "contact": {
@@ -273,6 +274,7 @@ def _escape_resume(tailored: TailoredResume) -> dict[str, Any]:
         },
         "work_history": tuple(_escape_work(w) for w in tailored.work_history),
         "education": tuple(_escape_edu(e) for e in tailored.education),
+        "personal_projects": tuple(_escape_project(p) for p in tailored.personal_projects),
     }
 
 
@@ -293,4 +295,22 @@ def _escape_edu(edu: Education) -> dict[str, Any]:
         "field": tex_escape(edu.field),
         "year_start": edu.year_start,
         "year_end": edu.year_end,
+    }
+
+
+def _escape_project(project: TailoredProject) -> dict[str, Any]:
+    """Escape a project for the Jinja render.
+
+    ``link`` is NOT tex-escaped because it's substituted into
+    ``\\href{<link>}{...}`` where it's treated as a URL argument; LaTeX
+    handles URL-specific quoting itself. Everything else flows through
+    ``tex_escape`` because it lands in the typeset body.
+    """
+    return {
+        "name": tex_escape(project.name),
+        "description": tex_escape(project.description),
+        "stack": tex_escape(project.stack),
+        "link": project.link,
+        "link_label": tex_escape(project.link_label),
+        "bullets": tuple({"text": tex_escape(b.text)} for b in project.bullets),
     }

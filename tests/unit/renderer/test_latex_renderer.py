@@ -18,7 +18,12 @@ from pathlib import Path
 
 import pytest
 
-from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
+from resumeai.agent.models import (
+    TailoredBullet,
+    TailoredProject,
+    TailoredResume,
+    TailoredWorkEntry,
+)
 from resumeai.context.models import Contact, Education
 from resumeai.renderer.latex_renderer import (
     compile_pdf,
@@ -58,6 +63,10 @@ def full_tailored() -> TailoredResume:
         ),
         summary="Five years AWS + Rails consulting; ships open-source code.",
         skills=("Python", "TypeScript", "AWS (Lambda, ECS/Fargate)"),
+        key_achievements=(
+            "Built and maintain jobai with 705+ tests at 89% coverage.",
+            "Shipped CDK infrastructure + observability for InTruth's platform.",
+        ),
         work_history=(
             TailoredWorkEntry(
                 company="DiUS Computing",
@@ -78,6 +87,37 @@ def full_tailored() -> TailoredResume:
             ),
         ),
         certifications=("Certificate IV in Property Services",),
+        personal_projects=(
+            TailoredProject(
+                name="jobai",
+                description="local-first AI job-hunting platform",
+                stack="Python, FastAPI, React, Docker",
+                link="https://github.com/duketis/jobai",
+                link_label="github.com/duketis/jobai",
+                bullets=(
+                    TailoredBullet(
+                        text="Ingests 9,000+ jobs per cycle from 50+ ATS APIs.",
+                        source_slug="jobai",
+                    ),
+                    TailoredBullet(
+                        text="705+ tests at 89% coverage with mypy strict.",
+                        source_slug="jobai",
+                    ),
+                ),
+            ),
+            TailoredProject(
+                name="Strategy Miner",
+                stack="Python, FastAPI, React, Backtrader",
+                link=None,
+                link_label="Private project",
+                bullets=(
+                    TailoredBullet(
+                        text="AI-driven backtesting + strategy-optimisation platform.",
+                        source_slug="strategy-miner",
+                    ),
+                ),
+            ),
+        ),
     )
 
 
@@ -168,7 +208,9 @@ class TestRenderTex:
         assert r"\section{Profile}" in out
         assert r"\section{Technical Skills}" in out
         assert r"\section{Education}" in out
+        assert r"\section{Key Achievements}" in out
         assert r"\section{Professional Experience}" in out
+        assert r"\section{Personal Projects}" in out
         # Bullet text
         assert "Built CDK infrastructure." in out
         # Skills joined as a single comma list
@@ -177,13 +219,74 @@ class TestRenderTex:
         assert "2020" in out
         # Certification rendered as its own subheading
         assert "Certificate IV in Property Services" in out
+        # Key achievements rendered as bullets
+        assert "Built and maintain jobai" in out
+        # Personal projects: public one has a clickable href, private one
+        # has a plain "Private project" right column.
+        assert r"\href{https://github.com/duketis/jobai}{github.com/duketis/jobai}" in out
+        assert "Private project" in out
+        assert r"\textbf{jobai}" in out
+        assert r"\textbf{Strategy Miner}" in out
 
     def test_empty_section_is_omitted(self, minimal_tailored: TailoredResume) -> None:
         out = render_tex(minimal_tailored)
         assert r"\section{Profile}" not in out
         assert r"\section{Technical Skills}" not in out
         assert r"\section{Education}" not in out
+        assert r"\section{Key Achievements}" not in out
         assert r"\section{Professional Experience}" not in out
+        assert r"\section{Personal Projects}" not in out
+
+    def test_personal_projects_omits_description_when_empty(self) -> None:
+        """The ``---`` separator between name and description must NOT appear
+        when description is blank. Strategy Miner-style entries set
+        description="" and rely on the title alone."""
+        tailored = TailoredResume(
+            name="A",
+            contact=Contact(email="a@b.co"),
+            personal_projects=(
+                TailoredProject(
+                    name="Solo",
+                    stack="Python",
+                    link_label="Private project",
+                    bullets=(TailoredBullet(text="Did the thing."),),
+                ),
+            ),
+        )
+        out = render_tex(tailored)
+        # Project body renders -- the title has no `---` because no description.
+        assert r"\textbf{Solo}" in out
+        assert r"\textbf{Solo} ---" not in out
+        # Stack still pipes in as italic.
+        assert r"\emph{Python}" in out
+
+    def test_personal_project_without_link_or_label_has_empty_right_column(self) -> None:
+        """``link`` AND ``link_label`` both None -> right column is empty."""
+        tailored = TailoredResume(
+            name="A",
+            contact=Contact(email="a@b.co"),
+            personal_projects=(TailoredProject(name="X"),),
+        )
+        out = render_tex(tailored)
+        # No project-specific \href (mailto:contact one is fine); no
+        # "Private project" placeholder either.
+        assert "https://" not in out
+        assert "Private project" not in out
+        # The right column resolves to literal `{}` -- empty plus trailing
+        # newline -- when both fields are absent.
+        assert r"\resumeProjectHeading" in out
+        assert r"{\textbf{X}}{}" in out
+
+    def test_personal_project_with_link_but_no_label_uses_link_as_label(self) -> None:
+        tailored = TailoredResume(
+            name="A",
+            contact=Contact(email="a@b.co"),
+            personal_projects=(
+                TailoredProject(name="X", link="https://example.com/x", link_label=None),
+            ),
+        )
+        out = render_tex(tailored)
+        assert r"\href{https://example.com/x}{https://example.com/x}" in out
 
     def test_user_input_is_escaped(self) -> None:
         tailored = TailoredResume(
