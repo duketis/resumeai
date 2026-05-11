@@ -34,6 +34,12 @@ def root_redirect() -> RedirectResponse:
     return RedirectResponse("/tailor", status_code=307)
 
 
+@router.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request) -> HTMLResponse:
+    """Static info page about how to change runtime settings (template)."""
+    return templates.TemplateResponse(request, "settings.html", {})
+
+
 @router.get("/tailor", response_class=HTMLResponse)
 def tailor_page(request: Request) -> HTMLResponse:
     return templates.TemplateResponse(

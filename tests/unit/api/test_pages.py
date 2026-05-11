@@ -163,6 +163,14 @@ def test_root_url_redirects_to_tailor(client: TestClient) -> None:
     assert response.headers["location"] == "/tailor"
 
 
+def test_settings_page_renders(client: TestClient) -> None:
+    """``/settings`` returns the static info page about template editing."""
+    response = client.get("/settings")
+    assert response.status_code == 200
+    assert "Settings" in response.text
+    assert "default.tex.j2" in response.text
+
+
 def test_runs_page_renders_with_flash_query_param(client: TestClient) -> None:
     response = client.get("/runs?flash=Hello+world")
     assert response.status_code == 200
