@@ -7,16 +7,20 @@ services:
     ports:
       - "8765:8765"
     volumes:
-      # Persistent run + settings storage on the host.
+      # Per-run rendered outputs on the host.
       - ./runs:/data/runs
+      # The candidate's context tree (resume.yaml, work_history/, projects/,
+      # master-resume.txt, Resume*.tex). Mounted read-write so the container
+      # can read it and so any future "upload via UI" path can write into it.
       - ./UserContext:/data/UserContext
-      - resumeai-db:/root/.resumeai
+      # The SQLite database that holds Settings + Run history + Context-pool
+      # uploads. Bind-mounting the host's ``~/.resumeai/`` so the container
+      # shares the SAME database the user already has on their Mac --
+      # otherwise the context pool the user uploaded pre-Docker looks empty.
+      - ${HOME}/.resumeai:/root/.resumeai
 
       # Claude CLI auth. The host keychain isn't readable from the container,
       # so we project the OAuth token into a file the CLI reads on startup.
       # Run ``./Tools/export-claude-credentials.sh`` once before
       # ``docker compose up`` to populate ./_docker_claude/.credentials.json.
       - ./_docker_claude:/root/.claude
-
-volumes:
-  resumeai-db:
