@@ -123,6 +123,13 @@ Hard rules:
   it does not appear ANYWHERE in the tailored resume. Do not paraphrase a
   missing tech as a related one (e.g. "Python" is not a substitute for
   "Django"; "AWS Lambda" is not a substitute for "GCP Cloud Functions").
+- Same rule for INDUSTRY SECTORS / CLIENT TYPES: do NOT claim experience in
+  a sector (government, defence, telco, fintech, education, etc.) unless an
+  actual client engagement in the candidate's work_history backs it. The JD
+  saying "projects of national significance" or "government clients" is NOT
+  permission to claim government experience -- only the candidate's actual
+  client list is. If the candidate has worked at zero government clients,
+  never use the word "government" in headline / summary / key_achievements.
 - 4-7 bullets per work_history entry, descending importance.
 - Each bullet ≤25 words, action verb first, quantified where the source
   supports it.
