@@ -30,7 +30,7 @@ class LLMClient(Protocol):
 
 
 DEFAULT_MODEL = "claude-opus-4-7"
-DEFAULT_TIMEOUT_SECONDS = 120
+DEFAULT_TIMEOUT_SECONDS = 300
 
 
 class ClaudeCliClient:
