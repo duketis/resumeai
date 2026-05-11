@@ -43,6 +43,10 @@ class TailoredProject(BaseModel):
     label (display text). Private projects keep ``link`` as ``None`` and
     set ``link_label`` to a plain string like ``"Private project"`` so
     the right-column still shows something but isn't a dead URL.
+
+    ``bullets`` uses :class:`TailoredBullet` so projects carry the same
+    provenance as work_history bullets (``source_slug`` points back at
+    the ``projects/<slug>`` it draws from).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -52,7 +56,7 @@ class TailoredProject(BaseModel):
     stack: str = ""
     link: str | None = None
     link_label: str | None = None
-    bullets: tuple[str, ...] = ()
+    bullets: tuple[TailoredBullet, ...] = ()
     source_slug: str | None = None
 
 

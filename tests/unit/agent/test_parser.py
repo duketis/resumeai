@@ -23,7 +23,9 @@ def test_parses_well_formed_response(well_formed_response: str) -> None:
     assert project.name == "sample-tool"
     assert project.link == "https://github.com/alex/sample-tool"
     assert project.link_label == "github.com/alex/sample-tool"
-    assert project.bullets == ("Ingests sample data from public APIs into SQLite.",)
+    assert len(project.bullets) == 1
+    assert project.bullets[0].text == "Ingests sample data from public APIs into SQLite."
+    assert project.bullets[0].source_slug == "sample-tool"
 
 
 def test_parses_response_inside_json_fence(

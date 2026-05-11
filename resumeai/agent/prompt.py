@@ -82,11 +82,16 @@ no preamble) matching this exact schema:
   "personal_projects": [
     {
       "name": "string — project name (copied verbatim from the projects/ entry)",
-      "description": "string — one-line description (≤15 words)",
-      "stack": "string — comma-separated tech list",
+      "description": "string — noun phrase ≤8 words; no em-dashes; no mid-sentence punctuation",
+      "stack": "string — 4-7 comma-separated technologies (pick the JD-relevant ones; cap at 7)",
       "link": "string or null — clickable right-column URL; null for private/never-link projects",
       "link_label": "string or null — right-column text (display label or 'Private project')",
-      "bullets": ["array of 2-4 strings — action verb first, ≤25 words each"],
+      "bullets": [
+        {
+          "text": "string — bullet text, action verb first, ≤25 words",
+          "source_slug": "string — the projects/<slug> this bullet draws from"
+        }
+      ],
       "source_slug": "string — the projects/<slug> this draws from"
     }
   ],
@@ -131,6 +136,11 @@ Personal Projects rules:
   level when the project body indicates "ask me about it" (architecture
   walkthrough) and at the implementation/code-review level when the
   project body indicates "click through and audit" (code-review showcase).
+- The rendered heading line ``name --- description $|$ stack`` must
+  stay on ONE line. Keep ``description`` to ≤8 words AND keep ``stack``
+  to ≤7 entries -- the template can't wrap the project heading. If the
+  full stack from the project body has more than 7 entries, drop the
+  ones least relevant to the JD.
 
 Multi-source rules:
 - The MASTER TEMPLATE's current content (when present in uploaded files,

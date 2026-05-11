@@ -185,7 +185,10 @@ def _well_formed_response_dict(*, name: str = "Alex Sample") -> dict[str, Any]:
                 "link": "https://github.com/alex/sample-tool",
                 "link_label": "github.com/alex/sample-tool",
                 "bullets": [
-                    "Ingests sample data from public APIs into SQLite.",
+                    {
+                        "text": "Ingests sample data from public APIs into SQLite.",
+                        "source_slug": "sample-tool",
+                    }
                 ],
                 "source_slug": "sample-tool",
             }

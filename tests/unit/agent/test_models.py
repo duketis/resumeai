@@ -63,7 +63,7 @@ def test_tailored_resume_round_trips_through_json() -> None:
                 stack="Python, FastAPI",
                 link="https://github.com/alex/alpha",
                 link_label="github.com/alex/alpha",
-                bullets=("Built it.",),
+                bullets=(TailoredBullet(text="Built it.", source_slug="alpha"),),
                 source_slug="alpha",
             ),
             TailoredProject(
@@ -71,7 +71,7 @@ def test_tailored_resume_round_trips_through_json() -> None:
                 description="Another thing.",
                 link=None,
                 link_label="Private project",
-                bullets=("Designed it.",),
+                bullets=(TailoredBullet(text="Designed it.", source_slug="beta"),),
             ),
         ),
         rationale="Because.",
