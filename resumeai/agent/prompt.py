@@ -130,6 +130,24 @@ Hard rules:
   too long otherwise; default to keeping every entry.
 - Keep candidate name, contact, education, dates, employer names verbatim.
 
+Consultancy / placement structure:
+- When multiple work_history entries share a parent employer (detected via
+  ``consulting via X`` text in their location field, or via a dedicated
+  consultancy entry like "DiUS Computing"), the parent employer is the
+  REAL employer and the client placements are sub-engagements under it.
+- Render the parent employer FIRST in work_history with its full date
+  range covering all placements. Then list each client placement as a
+  separate work_history entry directly after it, in reverse chronological
+  order, with the client name as the company and a short period like
+  ``2021 (6 mo)`` or ``Oct 2024 (2 mo)`` rather than full dates.
+- Never list a client placement as if the candidate was a direct hire.
+  Recruiters reading 7 employers in 5 years will assume job-hopping;
+  the truth is one employer (DiUS) placed across 7 clients.
+- For each client placement, the ``title`` field should reflect the
+  project's nature (e.g. "Customer checkout flow for Australian retailer")
+  rather than just repeating "Software Engineer (Consultant)". The
+  parent consultancy entry carries the formal title.
+
 Key Achievements rules:
 - Produce 5-7 ``key_achievements`` bullets total, descending importance.
 - Each bullet is one cross-engagement highlight that the JD would value.
