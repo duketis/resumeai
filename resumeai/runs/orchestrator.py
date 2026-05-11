@@ -13,6 +13,7 @@ every concurrent run. The orchestrator:
 
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import UTC, datetime
 from pathlib import Path
@@ -189,7 +190,10 @@ class TailoringOrchestrator:
         # Step 5: render via LaTeX -> tectonic -> PDF.
         await self._step(run_id, RunStatus.RENDERING, "rendering tailored PDF")
         output_dir = self._runs_root / run_id
-        result = await asyncio.to_thread(render_tailored_resume_latex, tailored, output_dir)
+        stem = _resume_filename_stem(tailored.name, requirements)
+        result = await asyncio.to_thread(
+            render_tailored_resume_latex, tailored, output_dir, stem=stem
+        )
         update_run(self._runs, run_id, result=result)
 
         # Step 6: verify (QC pass — never blocks a SUCCEEDED run, surfaces
@@ -233,6 +237,36 @@ def _generate_run_id() -> str:
     """Short, URL-safe, sortable-ish run identifier."""
     stamp = _utcnow().strftime("%Y%m%d%H%M%S")
     return f"run_{stamp}_{secrets.token_urlsafe(6)}"
+
+
+# Filesystem-safe characters: letters, digits, space, dash, underscore, parens,
+# ampersand, comma, dot. Anything else (slashes, colons, smart quotes, control
+# chars, etc.) gets stripped so Preview/Finder don't choke on the filename.
+_FILENAME_SAFE_RE = re.compile(r"[^\w\s\-(),.&]+", re.UNICODE)
+_WHITESPACE_RUN_RE = re.compile(r"\s+")
+
+
+def _resume_filename_stem(candidate_name: str, requirements: JobRequirements) -> str:
+    """Build a per-JD filename stem like ``Jonathan Duketis - GoSource - Software Developer``.
+
+    The user opens many PDFs in Preview side-by-side; identical ``resume.pdf``
+    names from successive runs are impossible to tell apart. The stem
+    incorporates whatever JD context survived parsing (company + title) so the
+    Preview titlebar identifies the run at a glance. Falls back to
+    ``"resume"`` when sanitisation strips every part to nothing.
+    """
+    parts = [
+        _sanitize_for_filename(candidate_name),
+        _sanitize_for_filename(requirements.company or ""),
+        _sanitize_for_filename(requirements.title),
+    ]
+    parts = [p for p in parts if p]
+    return " - ".join(parts) if parts else "resume"
+
+
+def _sanitize_for_filename(raw: str) -> str:
+    cleaned = _FILENAME_SAFE_RE.sub("", raw)
+    return _WHITESPACE_RUN_RE.sub(" ", cleaned).strip(" -._")
 
 
 __all__ = [

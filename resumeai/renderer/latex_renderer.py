@@ -173,13 +173,19 @@ def render_tailored_resume_latex(
     *,
     template_name: str = DEFAULT_TEMPLATE_NAME,
     templates_dir: Path | None = None,
+    stem: str = "resume",
 ) -> RenderResult:
-    """End-to-end: TailoredResume -> .tex on disk -> PDF on disk -> RenderResult."""
+    """End-to-end: TailoredResume -> .tex on disk -> PDF on disk -> RenderResult.
+
+    ``stem`` controls the on-disk filename for both the ``.tex`` and ``.pdf``;
+    the orchestrator builds a JD-flavoured stem so the user can tell several
+    open PDFs apart in Preview (default ``"resume"`` keeps tests stable).
+    """
     tex_content = render_tex(tailored, template_name=template_name, templates_dir=templates_dir)
-    pdf_bytes = compile_pdf(tex_content, output_dir)
+    pdf_bytes = compile_pdf(tex_content, output_dir, stem=stem)
     # Resolve so callers passing a relative ``runs/<run_id>`` get a valid
     # ``file://`` URL -- Path.as_uri() rejects relative paths.
-    pdf_path = (output_dir / "resume.pdf").resolve()
+    pdf_path = (output_dir / f"{stem}.pdf").resolve()
     diffs = tuple(
         RenderDiff(
             kind=kind,
