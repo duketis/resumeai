@@ -1,0 +1,136 @@
+%%% resumeai default LaTeX template
+%%% Adapted from Jake Gutierrez's resume template (MIT) -- github.com/jakegut/resume
+%%% Driven by Jinja2 with custom delimiters (see latex_renderer.py).
+%%% Tectonic / XeTeX compatible (no pdfTeX-only primitives).
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-.5in}
+\addtolength{\textheight}{1.0in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{2pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{2pt}]
+\linespread{1.08}
+
+% ---- helper commands (resume-specific layout) -------------------------------
+\newcommand{\resumeItem}[1]{
+  \item\small{ {#1} }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{2pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-2pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & #2 \\
+    \end{tabular*}\vspace{-2pt}
+}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[itemsep=2pt, topsep=2pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}}
+
+%%%===========================================================================
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Huge \scshape \VAR{resume.name}} \\ \vspace{1pt}
+    \BLOCK{if resume.headline}\small \textit{\VAR{resume.headline}} \\ \vspace{2pt}\BLOCK{endif}
+    \small
+    \BLOCK{set parts = [] }\#{}
+    \BLOCK{if resume.contact.location}\BLOCK{set _ = parts.append(resume.contact.location) }\BLOCK{endif}
+    \BLOCK{if resume.contact.email}\BLOCK{set _ = parts.append('\\href{mailto:' ~ resume.contact.email ~ '}{' ~ resume.contact.email ~ '}') }\BLOCK{endif}
+    \BLOCK{if resume.contact.phone}\BLOCK{set _ = parts.append(resume.contact.phone) }\BLOCK{endif}
+    \BLOCK{if resume.contact.github}\BLOCK{set _ = parts.append('\\href{https://' ~ resume.contact.github ~ '}{' ~ resume.contact.github ~ '}') }\BLOCK{endif}
+    \BLOCK{if resume.contact.linkedin}\BLOCK{set _ = parts.append('\\href{https://' ~ resume.contact.linkedin ~ '}{' ~ resume.contact.linkedin ~ '}') }\BLOCK{endif}
+    \BLOCK{if resume.contact.website}\BLOCK{set _ = parts.append('\\href{https://' ~ resume.contact.website ~ '}{' ~ resume.contact.website ~ '}') }\BLOCK{endif}
+    \VAR{ parts | join(' $|$ ') }
+\end{center}
+
+%----------PROFILE----------
+\BLOCK{if resume.summary}
+\section{Profile}
+\small{\VAR{resume.summary}}
+\BLOCK{endif}
+
+%----------SKILLS----------
+\BLOCK{if resume.skills}
+\section{Technical Skills}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small\item{ \VAR{resume.skills | join(', ')} }
+\end{itemize}
+\BLOCK{endif}
+
+%----------EDUCATION----------
+\BLOCK{if resume.education or resume.certifications}
+\section{Education}
+\resumeSubHeadingListStart
+\BLOCK{for edu in resume.education}
+  \resumeSubheading
+    {\VAR{edu.institution}}{\VAR{edu | format_period}}
+    {\VAR{edu.degree}\BLOCK{if edu.field} --- \VAR{edu.field}\BLOCK{endif}}{}
+\BLOCK{endfor}
+\BLOCK{for cert in resume.certifications}
+  \resumeSubheading
+    {\VAR{cert}}{}{}{}
+\BLOCK{endfor}
+\resumeSubHeadingListEnd
+\BLOCK{endif}
+
+%----------EXPERIENCE----------
+\BLOCK{if resume.work_history}
+\section{Professional Experience}
+\resumeSubHeadingListStart
+\BLOCK{for job in resume.work_history}
+  \resumeSubheading
+    {\VAR{job.company}}{\VAR{job.period or ''}}
+    {\VAR{job.title}}{\VAR{job.location or ''}}
+  \BLOCK{if job.bullets}
+  \resumeItemListStart
+  \BLOCK{for bullet in job.bullets}
+    \resumeItem{\VAR{bullet.text}}
+  \BLOCK{endfor}
+  \resumeItemListEnd
+  \BLOCK{endif}
+\BLOCK{endfor}
+\resumeSubHeadingListEnd
+\BLOCK{endif}
+
+\end{document}

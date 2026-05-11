@@ -24,7 +24,7 @@ from resumeai.agent.tailor import tailor_resume
 from resumeai.context.loader import load_user_context
 from resumeai.jd.fetcher import fetch_jd
 from resumeai.jd.parser import parse_jd_text
-from resumeai.renderer.render import render_tailored_resume
+from resumeai.renderer.latex_renderer import render_tailored_resume_latex
 from resumeai.runs.events import RunEventBus
 from resumeai.runs.models import Run, RunEvent, RunStatus, TailorRequest
 from resumeai.runs.store import update_run
@@ -50,6 +50,7 @@ if TYPE_CHECKING:
 
 
 DEFAULT_CONTEXT_ROOT = Path("UserContext")
+DEFAULT_RUNS_ROOT = Path("runs")
 
 
 class OrchestratorError(RuntimeError):
@@ -74,6 +75,7 @@ class TailoringOrchestrator:
         context_root: Path = DEFAULT_CONTEXT_ROOT,
         http_client: httpx.Client | None = None,
         context_file_store: ContextFileStore | None = None,
+        runs_root: Path = DEFAULT_RUNS_ROOT,
     ) -> None:
         self._runs = runs_store
         self._settings = settings_store
@@ -83,6 +85,7 @@ class TailoringOrchestrator:
         self._context_root = context_root
         self._http = http_client
         self._context_files = context_file_store
+        self._runs_root = runs_root
 
     @property
     def event_bus(self) -> RunEventBus:
@@ -150,7 +153,6 @@ class TailoringOrchestrator:
             raise OrchestratorError(f"unknown run {run_id!r}")
 
         request = current.request
-        template_doc_id = self._resolve_template_doc_id(request)
 
         # Step 1: JD text (fetch URL or use supplied text).
         if request.jd_url:
@@ -171,15 +173,13 @@ class TailoringOrchestrator:
         )
         update_run(self._runs, run_id, requirements=requirements)
 
-        # Step 3: load the user's context tree + uploaded files + the master
-        # template's CURRENT content (so the agent can preserve good bullets
-        # the master already has rather than treating the doc as a blank shell).
+        # Step 3: load the user's context tree + uploaded files. The LaTeX
+        # template is local and rebuilt every run, so no master-template
+        # snapshot is needed -- the agent gets its content from the user
+        # context tree (resume.yaml, work_history/*.md, git_audit/*.md, etc.).
         await self._step(run_id, RunStatus.LOADING_CONTEXT, "loading user context")
         context = await asyncio.to_thread(load_user_context, self._context_root)
         context_files_list = list(self._context_files.list_all()) if self._context_files else []
-        master_snapshot = await asyncio.to_thread(self._snapshot_master_template, template_doc_id)
-        if master_snapshot is not None:
-            context_files_list.insert(0, master_snapshot)
 
         # Step 4: tailor.
         await self._step(run_id, RunStatus.TAILORING, "running tailoring agent")
@@ -193,10 +193,12 @@ class TailoringOrchestrator:
         )
         update_run(self._runs, run_id, tailored=tailored)
 
-        # Step 5: render.
-        await self._step(run_id, RunStatus.RENDERING, "writing tailored Google Doc")
-        client = self._build_docs_client()
-        result = await asyncio.to_thread(render_tailored_resume, tailored, template_doc_id, client)
+        # Step 5: render via LaTeX -> tectonic -> PDF.
+        await self._step(run_id, RunStatus.RENDERING, "rendering tailored PDF")
+        output_dir = self._runs_root / run_id
+        result = await asyncio.to_thread(
+            render_tailored_resume_latex, tailored, output_dir
+        )
         update_run(self._runs, run_id, result=result)
 
         # Step 6: verify (QC pass — never blocks a SUCCEEDED run, surfaces
