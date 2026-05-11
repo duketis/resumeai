@@ -58,6 +58,8 @@ def load_user_context(root: Path) -> UserContext:
         git_audit=tuple(_load_git_audit(root / "git_audit")),
         cover_letters=tuple(_load_cover_letters(root / "cover_letters")),
         projects=tuple(_load_projects(root / "projects")),
+        master_resume=_load_text_file(root / "master-resume.txt"),
+        reference_resumes=tuple(_load_reference_resumes(root)),
     )
 
 
@@ -143,6 +145,30 @@ def _load_cover_letters(directory: Path) -> list[CoverLetterEntry]:
         )
     entries.sort(key=lambda e: e.slug)
     return entries
+
+
+# -- master resume + reference resumes ---------------------------------------
+
+
+def _load_text_file(path: Path) -> str:
+    """Return the contents of ``path`` if it exists, else empty string."""
+    if not path.is_file():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
+def _load_reference_resumes(root: Path) -> list[str]:
+    """Return any ``Resume*.tex`` files in the root as verbatim strings.
+
+    These are hand-tailored references the candidate has already produced
+    and considers known-good. The agent reads them to anchor its own
+    output in real phrasing rather than guessing.
+    """
+    return [
+        path.read_text(encoding="utf-8").strip()
+        for path in sorted(root.glob("Resume*.tex"))
+        if path.is_file()
+    ]
 
 
 # -- projects ----------------------------------------------------------------

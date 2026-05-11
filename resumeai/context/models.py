@@ -125,6 +125,13 @@ class UserContext(BaseModel):
     git_audit: tuple[GitAuditEntry, ...] = ()
     cover_letters: tuple[CoverLetterEntry, ...] = ()
     projects: tuple[ProjectEntry, ...] = ()
+    # Verbatim authoritative reference content. ``master_resume`` is the
+    # candidate's plain-text master resume; ``reference_resumes`` are any
+    # already-rendered tailored resumes the candidate considers known-good.
+    # The agent reads these to ground its own output in the candidate's
+    # exact phrasing rather than hallucinating.
+    master_resume: str = ""
+    reference_resumes: tuple[str, ...] = ()
 
     def is_empty(self) -> bool:
         """True when nothing was loaded (no resume.yaml + no markdown files)."""
@@ -134,4 +141,6 @@ class UserContext(BaseModel):
             and not self.git_audit
             and not self.cover_letters
             and not self.projects
+            and not self.master_resume
+            and not self.reference_resumes
         )

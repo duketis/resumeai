@@ -312,7 +312,43 @@ def _format_context(context: UserContext) -> str:
         )
         for project in context.projects:
             parts.extend(_format_project(project))
+    parts.extend(_format_authoritative_refs(context))
     return "\n".join(parts)
+
+
+def _format_authoritative_refs(context: UserContext) -> list[str]:
+    """Append master resume + reference resume blocks for the agent.
+
+    Split out of ``_format_context`` to keep its branch count manageable
+    (ruff PLR0912). Returns an empty list when neither is present.
+    """
+    parts: list[str] = []
+    if context.master_resume:
+        parts.append("")
+        parts.append("## Master resume (AUTHORITATIVE — verbatim source of truth)")
+        parts.append(
+            "This is the candidate's plain-text master resume. Treat it as the "
+            "AUTHORITATIVE source for every fact: client names, dates, titles, "
+            "metrics, technologies, sectors. If a fact isn't here AND isn't in "
+            "the structured context above, do not include it. You may rephrase "
+            "to echo the JD's vocabulary, but never invent."
+        )
+        parts.extend(["```", context.master_resume, "```"])
+    if context.reference_resumes:
+        parts.append("")
+        parts.append("## Reference resumes (KNOWN-GOOD shape + tone)")
+        parts.append(
+            "Below are hand-tailored resumes the candidate has already produced "
+            "and considers known-good. Treat them as the model for STRUCTURE "
+            "(parent employer + sub-engagements, headline length, bullet style, "
+            "section ordering) and TONE (phrasing, level of detail). Your output "
+            "should look like a sibling of these, not a different beast. Do NOT "
+            "copy a bullet verbatim if it doesn't fit the new JD; do follow the "
+            "same shape."
+        )
+        for idx, ref in enumerate(context.reference_resumes, start=1):
+            parts.extend([f"### Reference {idx}", "```", ref, "```"])
+    return parts
 
 
 def _format_resume_base(resume: ResumeBase) -> list[str]:
