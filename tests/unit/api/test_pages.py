@@ -104,3 +104,44 @@ def test_run_pdf_404_when_result_field_is_none(
     )
     response = client.get("/runs/run_no_result/pdf")
     assert response.status_code == 404
+
+
+def test_clear_runs_route_wipes_store_and_redirects(
+    client: TestClient,
+    runs: InMemoryRunsStore,
+) -> None:
+    """``POST /runs/clear`` deletes every run and redirects to /runs with flash."""
+    when = datetime(2026, 5, 11, tzinfo=UTC)
+    runs.save(
+        Run(
+            id="run_a",
+            request=TailorRequest(jd_text="x"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+    )
+    runs.save(
+        Run(
+            id="run_b",
+            request=TailorRequest(jd_text="x"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+    )
+
+    response = client.post("/runs/clear", follow_redirects=False)
+    assert response.status_code == 303
+    assert "/runs?flash=Cleared" in response.headers["location"]
+    assert "2" in response.headers["location"]  # count was 2
+    assert runs.list_recent() == []
+
+
+def test_clear_runs_route_works_on_empty_store(
+    client: TestClient,
+    runs: InMemoryRunsStore,
+) -> None:
+    response = client.post("/runs/clear", follow_redirects=False)
+    assert response.status_code == 303
+    assert "Cleared+0+run" in response.headers["location"]

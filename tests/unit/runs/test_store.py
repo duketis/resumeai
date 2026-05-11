@@ -226,6 +226,22 @@ def test_list_recent_skips_unparseable_rows(tmp_path: Path) -> None:
         store.close()
 
 
+def test_clear_removes_every_row_and_returns_count(store: RunsStore) -> None:
+    store.save(_make_run(run_id="a"))
+    store.save(_make_run(run_id="b"))
+    store.save(_make_run(run_id="c"))
+    assert len(store.list_recent()) == 3
+
+    deleted = store.clear()
+    assert deleted == 3
+    assert store.list_recent() == []
+    assert store.get("a") is None
+
+
+def test_clear_on_empty_store_returns_zero(store: RunsStore) -> None:
+    assert store.clear() == 0
+
+
 def test_get_returns_none_for_unparseable_row(tmp_path: Path) -> None:
     db_path = tmp_path / "runs.db"
     store = SqliteRunsStore(db_path=db_path)

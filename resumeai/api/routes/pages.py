@@ -71,8 +71,20 @@ def runs_page(
     return templates.TemplateResponse(
         request,
         "runs.html",
-        {"runs": runs.list_recent()},
+        {
+            "runs": runs.list_recent(),
+            "flash": request.query_params.get("flash"),
+        },
     )
+
+
+@router.post("/runs/clear", include_in_schema=False)
+def clear_runs(
+    runs: RunsStore = Depends(get_runs_store),
+) -> RedirectResponse:
+    """Wipe every run record from the store. Per-run PDFs on disk stay."""
+    deleted = runs.clear()
+    return RedirectResponse(f"/runs?flash=Cleared+{deleted}+run(s)", status_code=303)
 
 
 @router.get("/runs/{run_id}", response_class=HTMLResponse)

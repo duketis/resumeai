@@ -4,6 +4,10 @@
 
 <h2>Recent runs</h2>
 
+{% if flash %}
+  <p class="flash">{{ flash }}</p>
+{% endif %}
+
 {% if not runs %}
   <p>No runs yet. <a href="/tailor">Start one →</a></p>
 {% else %}
@@ -33,6 +37,14 @@
   </ul>
 {% endif %}
 
-<p><a class="button" href="/tailor">Start a new run</a></p>
+<p>
+  <a class="button" href="/tailor">Start a new run</a>
+  {% if runs %}
+    <form method="post" action="/runs/clear" style="display: inline;"
+          onsubmit="return confirm('Clear all {{ runs|length }} run record(s)? PDFs on disk will stay.');">
+      <button type="submit" class="button secondary">Clear history</button>
+    </form>
+  {% endif %}
+</p>
 
 {% endblock %}

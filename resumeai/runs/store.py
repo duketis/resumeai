@@ -38,6 +38,7 @@ class RunsStore(Protocol):
     def get(self, run_id: str) -> Run | None: ...
     def save(self, run: Run) -> None: ...
     def list_recent(self, limit: int = 20) -> list[Run]: ...
+    def clear(self) -> int: ...
 
 
 class SqliteRunsStore:
@@ -98,6 +99,16 @@ class SqliteRunsStore:
                 _log.warning("skipping unparseable run row %r: %s", row_id, exc)
         return runs
 
+    def clear(self) -> int:
+        """Delete every run record. Returns the count that was removed.
+
+        Per-run output directories on disk (``runs/<run_id>/...``) are
+        NOT touched -- the user may want to keep the PDF artefacts even
+        after clearing the run history. ``rm -rf runs/`` to wipe those.
+        """
+        cursor = self._conn.execute("DELETE FROM runs")
+        return cursor.rowcount
+
 
 class InMemoryRunsStore:
     """In-memory store with identical semantics. For tests."""
@@ -114,6 +125,11 @@ class InMemoryRunsStore:
     def list_recent(self, limit: int = 20) -> list[Run]:
         ordered = sorted(self._runs.values(), key=lambda r: r.updated_at, reverse=True)
         return ordered[: max(0, limit)]
+
+    def clear(self) -> int:
+        count = len(self._runs)
+        self._runs.clear()
+        return count
 
 
 def update_run(
