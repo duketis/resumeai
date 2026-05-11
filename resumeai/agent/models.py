@@ -35,6 +35,27 @@ class TailoredWorkEntry(BaseModel):
     source_slug: str | None = None
 
 
+class TailoredProject(BaseModel):
+    """A personal-projects entry in the tailored resume.
+
+    ``link`` is the full URL when the project should appear as a
+    clickable link in the right-column; ``link_label`` is the visible
+    label (display text). Private projects keep ``link`` as ``None`` and
+    set ``link_label`` to a plain string like ``"Private project"`` so
+    the right-column still shows something but isn't a dead URL.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str = Field(min_length=1)
+    description: str = ""
+    stack: str = ""
+    link: str | None = None
+    link_label: str | None = None
+    bullets: tuple[str, ...] = ()
+    source_slug: str | None = None
+
+
 class TailoredResume(BaseModel):
     """The full tailored resume.
 
@@ -42,6 +63,11 @@ class TailoredResume(BaseModel):
     ``certifications``) are passed through from the user's
     :class:`~resumeai.context.models.ResumeBase`; the agent never invents
     or alters them.
+
+    ``key_achievements`` is a cross-engagement highlight reel (drawn from
+    work history, projects, and the git audit) used between Education
+    and Professional Experience. ``personal_projects`` mirrors the
+    candidate's ``UserContext/projects/*.md`` entries.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -51,7 +77,9 @@ class TailoredResume(BaseModel):
     contact: Contact
     summary: str = ""
     skills: tuple[str, ...] = ()
+    key_achievements: tuple[str, ...] = ()
     work_history: tuple[TailoredWorkEntry, ...] = ()
     education: tuple[Education, ...] = ()
     certifications: tuple[str, ...] = ()
+    personal_projects: tuple[TailoredProject, ...] = ()
     rationale: str = ""

@@ -157,6 +157,23 @@ def _well_formed_response_dict(*, name: str = "Alex Sample") -> dict[str, Any]:
             }
         ],
         "certifications": ["AWS SAA"],
+        "key_achievements": [
+            "Designed a SHA-based deduplication pipeline that cut duplicates 92% at Acme.",
+            "Built sample-tool (github.com/alex/sample-tool) with 120+ tests and mypy strict.",
+        ],
+        "personal_projects": [
+            {
+                "name": "sample-tool",
+                "description": "local-first sample ingestion tool",
+                "stack": "Python, FastAPI, SQLite",
+                "link": "https://github.com/alex/sample-tool",
+                "link_label": "github.com/alex/sample-tool",
+                "bullets": [
+                    "Ingests sample data from public APIs into SQLite.",
+                ],
+                "source_slug": "sample-tool",
+            }
+        ],
         "rationale": "Reordered skills so Python + Postgres lead, kept Acme bullets...",
     }
 

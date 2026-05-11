@@ -15,6 +15,15 @@ def test_parses_well_formed_response(well_formed_response: str) -> None:
     assert resume.name == "Alex Sample"
     assert len(resume.work_history) == 1
     assert resume.work_history[0].bullets[0].source_slug == "01-acme"
+    # New sections introduced for the v1 LaTeX template.
+    assert len(resume.key_achievements) == 2
+    assert resume.key_achievements[0].startswith("Designed a SHA-based")
+    assert len(resume.personal_projects) == 1
+    project = resume.personal_projects[0]
+    assert project.name == "sample-tool"
+    assert project.link == "https://github.com/alex/sample-tool"
+    assert project.link_label == "github.com/alex/sample-tool"
+    assert project.bullets == ("Ingests sample data from public APIs into SQLite.",)
 
 
 def test_parses_response_inside_json_fence(
