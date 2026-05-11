@@ -17,6 +17,7 @@ from resumeai.context.models import (
     CoverLetterEntry,
     Education,
     GitAuditEntry,
+    ProjectEntry,
     ResumeBase,
     UserContext,
     WorkHistoryEntry,
@@ -109,6 +110,21 @@ def sample_context() -> UserContext:
                 company="Acme",
                 body="Hi team, ...",
                 raw_markdown="---\nrole: Senior Engineer\n---\nHi team, ...",
+            ),
+        ),
+        projects=(
+            ProjectEntry(
+                slug="sample-tool",
+                name="sample-tool",
+                url="https://github.com/alex/sample-tool",
+                status="v0.4.x (open-source)",
+                stack="Python, FastAPI, SQLite",
+                summary="A sample local-first ingestion tool used in tests.",
+                bullets=(
+                    "Ingests sample data into SQLite.",
+                    "FastAPI surface for queries.",
+                ),
+                body="A sample personal project. Always describe as 'open-source'.",
             ),
         ),
     )

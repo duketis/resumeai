@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from resumeai.context.models import (
         CoverLetterEntry,
         GitAuditEntry,
+        ProjectEntry,
         ResumeBase,
         UserContext,
         WorkHistoryEntry,
@@ -73,6 +74,22 @@ no preamble) matching this exact schema:
     }
   ],
   "certifications": ["array of strings — drop irrelevant ones"],
+  "key_achievements": [
+    "array of 5-7 strings — cross-engagement highlight bullets drawn",
+    "from work history, projects, and the git audit; do NOT duplicate a",
+    "bullet that already appears verbatim under Professional Experience"
+  ],
+  "personal_projects": [
+    {
+      "name": "string — project name (copied verbatim from the projects/ entry)",
+      "description": "string — one-line description (≤15 words)",
+      "stack": "string — comma-separated tech list",
+      "link": "string or null — clickable right-column URL; null for private/never-link projects",
+      "link_label": "string or null — right-column text (display label or 'Private project')",
+      "bullets": ["array of 2-4 strings — action verb first, ≤25 words each"],
+      "source_slug": "string — the projects/<slug> this draws from"
+    }
+  ],
   "rationale": "string — one paragraph explaining the major tailoring choices"
 }
 
@@ -91,6 +108,29 @@ Hard rules:
 - Drop work_history entries the JD makes irrelevant ONLY if the resume is
   too long otherwise; default to keeping every entry.
 - Keep candidate name, contact, education, dates, employer names verbatim.
+
+Key Achievements rules:
+- Produce 5-7 ``key_achievements`` bullets total, descending importance.
+- Each bullet is one cross-engagement highlight that the JD would value.
+- Draw from work history, projects, and the git audit. Echo the JD's
+  vocabulary where the underlying fact supports it.
+- NEVER repeat a bullet verbatim from Professional Experience -- this
+  is the summary highlight reel, not a copy.
+
+Personal Projects rules:
+- Emit ``personal_projects`` ONLY from the CANDIDATE CONTEXT ``Projects``
+  section. Never invent a project.
+- Read each project's body carefully and obey its positioning rules.
+  If the body says "never link as a URL" or "label it as 'Private project'",
+  set ``link`` to ``null`` and ``link_label`` to the literal label
+  (e.g. ``"Private project"``).
+- Otherwise, set ``link`` to the project's full https URL and
+  ``link_label`` to a clean display string (typically the URL with the
+  scheme stripped, e.g. ``"github.com/x/y"``).
+- 2-4 bullets per project, framed at the architecture / system-design
+  level when the project body indicates "ask me about it" (architecture
+  walkthrough) and at the implementation/code-review level when the
+  project body indicates "click through and audit" (code-review showcase).
 
 Multi-source rules:
 - The MASTER TEMPLATE's current content (when present in uploaded files,
@@ -210,6 +250,17 @@ def _format_context(context: UserContext) -> str:
         parts.append("## Past cover letters (for tone + vocabulary reference)")
         for letter in context.cover_letters:
             parts.extend(_format_cover_letter(letter))
+    if context.projects:
+        parts.append("")
+        parts.append("## Projects")
+        parts.append(
+            "Each project below ships as a Personal Projects entry on the tailored "
+            "resume. Read each project's body for its positioning rules -- in "
+            "particular, whether the right-column should be a clickable URL or a "
+            "plain label like 'Private project'."
+        )
+        for project in context.projects:
+            parts.extend(_format_project(project))
     return "\n".join(parts)
 
 
@@ -255,6 +306,31 @@ def _format_git_audit(audit: GitAuditEntry) -> list[str]:
     if audit.summary:
         lines.append("")
         lines.append(audit.summary)
+    return lines
+
+
+def _format_project(project: ProjectEntry) -> list[str]:
+    lines: list[str] = ["", f"### {project.name} (slug: `{project.slug}`)"]
+    if project.url:
+        lines.append(f"**URL:** {project.url}")
+    if project.status:
+        lines.append(f"**Status:** {project.status}")
+    if project.stack:
+        lines.append(f"**Stack:** {project.stack}")
+    if project.summary:
+        lines.append("")
+        lines.append(project.summary)
+    if project.bullets:
+        lines.append("")
+        lines.append("**Source bullets:**")
+        for bullet in project.bullets:
+            lines.append(f"- {bullet}")
+    if project.body:
+        lines.append("")
+        lines.append("**Full body (read for positioning rules):**")
+        lines.append("```")
+        lines.append(project.body)
+        lines.append("```")
     return lines
 
 

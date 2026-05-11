@@ -36,11 +36,29 @@ def test_system_prompt_documents_required_schema_fields() -> None:
         '"work_history"',
         '"education"',
         '"certifications"',
+        '"key_achievements"',
+        '"personal_projects"',
+        '"description"',
+        '"stack"',
+        '"link"',
+        '"link_label"',
         '"rationale"',
         '"source_slug"',
         '"bullets"',
     ):
         assert field in SYSTEM_PROMPT, f"missing {field}"
+
+
+def test_system_prompt_states_key_achievements_rules() -> None:
+    assert "Key Achievements rules" in SYSTEM_PROMPT
+    assert "5-7" in SYSTEM_PROMPT
+    assert "NEVER repeat" in SYSTEM_PROMPT
+
+
+def test_system_prompt_states_personal_projects_rules() -> None:
+    assert "Personal Projects rules" in SYSTEM_PROMPT
+    assert "never invent a project" in SYSTEM_PROMPT.lower()
+    assert "Private project" in SYSTEM_PROMPT
 
 
 def test_system_prompt_states_anti_fabrication_rule() -> None:
@@ -95,6 +113,33 @@ def test_user_prompt_includes_git_audit_and_cover_letter(
     assert "acme/platform" in prompt
     assert "Owner of services/ingestor" in prompt
     assert "Hi team," in prompt
+
+
+def test_user_prompt_includes_projects_section(
+    sample_jd: JobRequirements, sample_context: UserContext
+) -> None:
+    prompt = build_user_prompt(sample_jd, sample_context)
+
+    # Section heading + every field surfaces for the agent.
+    assert "## Projects" in prompt
+    assert "positioning rules" in prompt
+    assert "### sample-tool (slug: `sample-tool`)" in prompt
+    assert "https://github.com/alex/sample-tool" in prompt
+    assert "v0.4.x (open-source)" in prompt
+    assert "Python, FastAPI, SQLite" in prompt
+    assert "A sample local-first ingestion tool" in prompt
+    assert "Ingests sample data into SQLite." in prompt
+    # Body is fenced so the agent reads the positioning rules verbatim.
+    assert "Always describe as 'open-source'" in prompt
+
+
+def test_user_prompt_omits_projects_section_when_none(
+    sample_jd: JobRequirements, sample_context: UserContext
+) -> None:
+    """Replace the projects tuple with an empty one and the section drops."""
+    bare_context = sample_context.model_copy(update={"projects": ()})
+    prompt = build_user_prompt(sample_jd, bare_context)
+    assert "## Projects" not in prompt
 
 
 def test_user_prompt_handles_empty_context(sample_jd: JobRequirements) -> None:
@@ -271,6 +316,25 @@ def test_user_prompt_renders_cover_letter_without_body() -> None:
     assert "### empty" in prompt
     # No body line means no extra paragraph after the header.
     assert "Dear" not in prompt
+
+
+def test_user_prompt_renders_minimal_project_entry() -> None:
+    """Projects with only name + slug still render -- every optional field
+    branch in ``_format_project`` is covered by this and the sample-context
+    test above."""
+    from resumeai.context.models import ProjectEntry  # noqa: PLC0415
+
+    context = UserContext(projects=(ProjectEntry(slug="x", name="X"),))
+    prompt = build_user_prompt(JobRequirements(title="Eng"), context)
+
+    assert "### X (slug: `x`)" in prompt
+    # All optional fields elided -- no URL, Status, Stack, summary,
+    # source bullets, or full-body fence.
+    assert "URL:" not in prompt
+    assert "Status:" not in prompt
+    assert "Stack:" not in prompt
+    assert "Source bullets" not in prompt
+    assert "Full body" not in prompt
 
 
 def test_user_prompt_renders_minimal_git_audit_entry() -> None:
