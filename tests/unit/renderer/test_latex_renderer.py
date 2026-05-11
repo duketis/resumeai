@@ -222,11 +222,15 @@ class TestRenderTex:
         # Key achievements rendered as bullets
         assert "Built and maintain jobai" in out
         # Personal projects: public one has a clickable href, private one
-        # has a plain "Private project" right column.
+        # has a plain "Private project" right column. ``\resumeSubheading``
+        # is a 4-arg macro -- the names appear inside the first {arg} and
+        # the macro adds the \textbf{} itself. The right column is wrapped
+        # in ``{\small ...}`` so a long URL doesn't overflow the column.
         assert r"\href{https://github.com/duketis/jobai}{github.com/duketis/jobai}" in out
-        assert "Private project" in out
-        assert r"\textbf{jobai}" in out
-        assert r"\textbf{Strategy Miner}" in out
+        assert r"{\small Private project}" in out  # right column literal
+        assert r"\resumeSubheading" in out
+        assert "{jobai}" in out
+        assert "{Strategy Miner}" in out
 
     def test_empty_section_is_omitted(self, minimal_tailored: TailoredResume) -> None:
         out = render_tex(minimal_tailored)
@@ -238,9 +242,8 @@ class TestRenderTex:
         assert r"\section{Personal Projects}" not in out
 
     def test_personal_projects_omits_description_when_empty(self) -> None:
-        """The ``---`` separator between name and description must NOT appear
-        when description is blank. Strategy Miner-style entries set
-        description="" and rely on the title alone."""
+        """When description is blank the subtitle line collapses to just the
+        stack -- no leading ``" $|$ "`` separator from an empty join entry."""
         tailored = TailoredResume(
             name="A",
             contact=Contact(email="a@b.co"),
@@ -254,28 +257,32 @@ class TestRenderTex:
             ),
         )
         out = render_tex(tailored)
-        # Project body renders -- the title has no `---` because no description.
-        assert r"\textbf{Solo}" in out
-        assert r"\textbf{Solo} ---" not in out
-        # Stack still pipes in as italic.
-        assert r"\emph{Python}" in out
+        # Name appears (bolded by the \resumeSubheading macro).
+        assert r"\resumeSubheading" in out
+        assert "Solo" in out
+        # Subtitle line is just the stack -- no orphan separator.
+        assert "{Python}{}" in out
+        assert "$|$ Python" not in out
 
     def test_personal_project_without_link_or_label_has_empty_right_column(self) -> None:
-        """``link`` AND ``link_label`` both None -> right column is empty."""
+        """``link`` AND ``link_label`` both None -> right column is literally
+        empty (no ``{\\small ...}`` wrapper either)."""
         tailored = TailoredResume(
             name="A",
             contact=Contact(email="a@b.co"),
             personal_projects=(TailoredProject(name="X"),),
         )
         out = render_tex(tailored)
-        # No project-specific \href (mailto:contact one is fine); no
-        # "Private project" placeholder either.
+        # No project-specific \href (mailto:contact one is fine).
         assert "https://" not in out
-        assert "Private project" not in out
-        # The right column resolves to literal `{}` -- empty plus trailing
-        # newline -- when both fields are absent.
-        assert r"\resumeProjectHeading" in out
-        assert r"{\textbf{X}}{}" in out
+        # No ``{\small \href...}`` or ``{\small <label>}`` wrapper since
+        # the project has neither a link nor a label to wrap. (Plain
+        # ``{\small`` does appear inside the ``\resumeSubheading`` macro
+        # definition in the preamble; we check the specific link-wrap forms.)
+        assert r"{\small \href" not in out
+        # \resumeSubheading{X}{} -- the right column is literally empty.
+        assert r"\resumeSubheading" in out
+        assert "{X}{}" in out
 
     def test_personal_project_with_link_but_no_label_uses_link_as_label(self) -> None:
         tailored = TailoredResume(

@@ -144,20 +144,26 @@
 \BLOCK{endif}
 
 %----------PERSONAL PROJECTS----------
+%
+% Uses ``\resumeSubheading`` (two-line) rather than the original single-line
+% ``\resumeProjectHeading`` so an arbitrary description + stack list never
+% overflows the page width. Top line: project name + clickable link (or
+% plain "Private project" label). Second line: description + stack as
+% italic subtitle. The hand-tailored SEEK template uses the single-line
+% form because the author hand-sized every field; an agent emitting
+% arbitrary content can't be trusted to stay within those tolerances.
 \BLOCK{if resume.personal_projects}
 \section{Personal Projects}
 \resumeSubHeadingListStart
 \BLOCK{for project in resume.personal_projects}
-  \BLOCK{set title = '\\textbf{' ~ project.name ~ '}' }\#{}
-  \BLOCK{if project.description}\BLOCK{set title = title ~ ' --- ' ~ project.description }\BLOCK{endif}
-  \BLOCK{if project.stack}\BLOCK{set title = title ~ ' $|$ \\emph{' ~ project.stack ~ '}' }\BLOCK{endif}
-  \BLOCK{if project.link}
-    \resumeProjectHeading
-      {\VAR{title}}{\href{\VAR{project.link}}{\VAR{project.link_label or project.link}}}
-  \BLOCK{else}
-    \resumeProjectHeading
-      {\VAR{title}}{\VAR{project.link_label or ''}}
-  \BLOCK{endif}
+  \BLOCK{set right_col = '' }\#{}
+  \BLOCK{if project.link}\BLOCK{set right_col = '{\\small \\href{' ~ project.link ~ '}{' ~ (project.link_label or project.link) ~ '}}' }\BLOCK{elif project.link_label}\BLOCK{set right_col = '{\\small ' ~ project.link_label ~ '}' }\BLOCK{endif}
+  \BLOCK{set subtitle_parts = [] }\#{}
+  \BLOCK{if project.description}\BLOCK{set _ = subtitle_parts.append(project.description) }\BLOCK{endif}
+  \BLOCK{if project.stack}\BLOCK{set _ = subtitle_parts.append(project.stack) }\BLOCK{endif}
+  \resumeSubheading
+    {\VAR{project.name}}{\VAR{right_col}}
+    {\VAR{subtitle_parts | join(' $|$ ')}}{}
   \BLOCK{if project.bullets}
   \resumeItemListStart
   \BLOCK{for bullet in project.bullets}
