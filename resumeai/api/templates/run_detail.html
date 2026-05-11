@@ -30,7 +30,6 @@
 <div class="card">
   {% if run.request.jd_url %}<p><strong>JD URL:</strong> <a href="{{ run.request.jd_url }}" target="_blank" rel="noopener">{{ run.request.jd_url }}</a></p>{% endif %}
   {% if run.request.jd_text %}<p><strong>JD text:</strong></p><pre style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ run.request.jd_text }}</pre>{% endif %}
-  {% if run.request.template_doc_id %}<p><strong>Template doc ID:</strong> <code>{{ run.request.template_doc_id }}</code></p>{% endif %}
 </div>
 
 {% if run.requirements %}

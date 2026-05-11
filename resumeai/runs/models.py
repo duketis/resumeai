@@ -36,15 +36,15 @@ class TailorRequest(BaseModel):
     """The body of ``POST /api/tailor``.
 
     Either ``jd_url`` (we'll fetch it) or ``jd_text`` (paste-in) must be
-    supplied. ``template_doc_id`` is optional — when omitted we use the
-    template registered in Settings.
+    supplied. The LaTeX template lives in the repo and is selected at
+    runtime via Settings (the default ``default.tex.j2`` is fine for most
+    runs).
     """
 
     model_config = ConfigDict(frozen=True)
 
     jd_url: str | None = None
     jd_text: str | None = None
-    template_doc_id: str | None = None
     model: str | None = None
 
     @model_validator(mode="after")

@@ -43,14 +43,12 @@ def tailor_page(request: Request) -> HTMLResponse:
 async def submit_tailor(
     jd_url: str = Form(""),
     jd_text: str = Form(""),
-    template_doc_id: str = Form(""),
     orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
 ) -> RedirectResponse:
     try:
         body = TailorRequest(
             jd_url=jd_url.strip() or None,
             jd_text=jd_text.strip() or None,
-            template_doc_id=template_doc_id.strip() or None,
         )
     except ValueError as exc:
         return RedirectResponse(

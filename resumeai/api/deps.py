@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 from fastapi import Request
 
 if TYPE_CHECKING:
-    from resumeai.auth.google_oauth import OAuthService
     from resumeai.context_files.store import ContextFileStore
     from resumeai.runs.orchestrator import TailoringOrchestrator
     from resumeai.runs.store import RunsStore
@@ -26,7 +25,6 @@ class AppState:
     """Container for the app-wide singletons. Lives on ``app.state.app_state``."""
 
     settings_store: SettingsStore
-    oauth_service: OAuthService
     runs_store: RunsStore
     orchestrator: TailoringOrchestrator
     context_file_store: ContextFileStore
@@ -39,10 +37,6 @@ def get_app_state(request: Request) -> AppState:
 
 def get_settings_store(request: Request) -> SettingsStore:
     return get_app_state(request).settings_store
-
-
-def get_oauth_service(request: Request) -> OAuthService:
-    return get_app_state(request).oauth_service
 
 
 def get_runs_store(request: Request) -> RunsStore:
