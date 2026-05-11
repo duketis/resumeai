@@ -41,9 +41,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Source last so a code change rebuilds only the final layer.
 COPY resumeai ./resumeai
 
-ENV PYTHONUNBUFFERED=1 \
-    RESUMEAI_RUNS_ROOT=/data/runs \
-    RESUMEAI_CONTEXT_ROOT=/data/UserContext
+ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8765
 

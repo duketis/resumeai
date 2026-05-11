@@ -7,12 +7,18 @@ services:
     ports:
       - "8765:8765"
     volumes:
-      # Per-run rendered outputs on the host.
-      - ./runs:/data/runs
+      # Per-run rendered outputs on the host. The orchestrator + the
+      # /runs/<id>/pdf route both resolve ``runs/<run_id>/...`` relative
+      # to the process cwd (= /app inside the container), so the mount
+      # target MUST be ``/app/runs`` -- mounting somewhere else
+      # silently puts PDFs in an unbind-mounted spot and the download
+      # route 404s.
+      - ./runs:/app/runs
       # The candidate's context tree (resume.yaml, work_history/, projects/,
-      # master-resume.txt, Resume*.tex). Mounted read-write so the container
-      # can read it and so any future "upload via UI" path can write into it.
-      - ./UserContext:/data/UserContext
+      # master-resume.txt, Resume*.tex). The orchestrator reads it via
+      # ``DEFAULT_CONTEXT_ROOT = Path("UserContext")`` -- relative, so
+      # same /app-rooted path applies.
+      - ./UserContext:/app/UserContext
       # The SQLite database that holds Settings + Run history + Context-pool
       # uploads. Bind-mounting the host's ``~/.resumeai/`` so the container
       # shares the SAME database the user already has on their Mac --
