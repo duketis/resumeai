@@ -142,18 +142,23 @@ Consultancy / placement structure:
   ``consulting via X`` text in their location field, or via a dedicated
   consultancy entry like "DiUS Computing"), the parent employer is the
   REAL employer and the client placements are sub-engagements under it.
-- Render the parent employer FIRST in work_history with its full date
-  range covering all placements. Then list each client placement as a
-  separate work_history entry directly after it, in reverse chronological
-  order, with the client name as the company and a short period like
-  ``2021 (6 mo)`` or ``Oct 2024 (2 mo)`` rather than full dates.
-- Never list a client placement as if the candidate was a direct hire.
-  Recruiters reading 7 employers in 5 years will assume job-hopping;
-  the truth is one employer (DiUS) placed across 7 clients.
-- For each client placement, the ``title`` field should reflect the
-  project's nature (e.g. "Customer checkout flow for Australian retailer")
-  rather than just repeating "Software Engineer (Consultant)". The
-  parent consultancy entry carries the formal title.
+- DO NOT emit a standalone parent-employer entry. Instead, prefix every
+  client placement's ``company`` field with the parent employer name and
+  an em-dash separator. Example: ``InTruth (Healthcare/Wellness)``
+  becomes ``DiUS — InTruth (Healthcare/Wellness)``. This way every
+  ``work_history`` row is self-describing -- humans and ATS parsers both
+  see the parent/client relationship at a glance, and the section can't
+  break across pages with an orphaned parent heading at the bottom.
+- Each client placement gets a short period like ``2021 (6 mo)`` or
+  ``Oct 2024 (2 mo)`` instead of bare full dates -- the period is the
+  duration AT that client, not the parent consultancy's overall tenure.
+- Never list a client placement without the parent prefix. Recruiters
+  reading 7 employers in 5 years will assume job-hopping; the truth is
+  one employer (DiUS) placed across 7 clients.
+- The ``title`` field should reflect the project's nature (e.g.
+  "Customer checkout flow for Australian retailer") rather than just
+  repeating "Software Engineer (Consultant)" -- the prefix already
+  carries the formal employer relationship.
 
 Key Achievements rules:
 - Produce 5-7 ``key_achievements`` bullets total, descending importance.

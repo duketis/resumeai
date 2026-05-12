@@ -87,7 +87,9 @@
 %----------PROFILE----------
 \BLOCK{if resume.summary}
 \section{Profile}
-\small{\VAR{resume.summary}}
+\begin{itemize}[leftmargin=0.15in, label={}]
+  \small\item \VAR{resume.summary}
+\end{itemize}
 \BLOCK{endif}
 
 %----------SKILLS----------
@@ -127,6 +129,10 @@
 %----------EXPERIENCE----------
 \BLOCK{if resume.work_history}
 \section{Professional Experience}
+% Discourage a pagebreak immediately after the section header -- otherwise
+% the header sits orphaned at the bottom of one page with the first entry
+% on the next. ``\nopagebreak[4]`` is the strongest hint LaTeX accepts.
+\nopagebreak[4]
 \resumeSubHeadingListStart
 \BLOCK{for job in resume.work_history}
   \resumeSubheading
