@@ -92,6 +92,7 @@ no preamble) matching this exact schema:
           "source_slug": "string — the projects/<slug> this bullet draws from"
         }
       ],
+      "// bullets count": "2-4 if no scan; 4-6 when Local folder scan present",
       "source_slug": "string — the projects/<slug> this draws from"
     }
   ],
@@ -177,15 +178,22 @@ Key Achievements rules:
 Personal Projects rules:
 - Emit ``personal_projects`` ONLY from the CANDIDATE CONTEXT ``Projects``
   section. Never invent a project.
-- For projects with a ``Local folder scan``: MINE THE SCAN for resume
-  bullets. The scan exposes the project's README files, every CLAUDE.md
-  / PLAN_*.md / ARCHITECTURE.md across subfolders, the verbatim
-  dependency manifests, and a code-stats breakdown (LOC by language).
-  Treat any shipped feature, architectural decision, or quantified
-  capability in those docs as legitimate bullet material -- prefer
-  these over paraphrasing the hand-written project body. Lift concrete
-  numbers (LOC, test counts, sub-system counts) verbatim where they
-  appear in the scan.
+- For projects with a ``Local folder scan``: THE SCAN IS THE PRIMARY
+  SOURCE for bullets. The hand-written ``Full body`` is positioning
+  rules + a sketch; the scan is the actual project. The scan exposes:
+  every README + CLAUDE.md + PLAN_*.md + ARCHITECTURE.md across
+  subfolders, the verbatim dependency manifests (deps = real tech
+  stack signal), a code-stats breakdown (LOC by language across the
+  whole repo), and the git-log summary.
+
+  **Hard requirement for scan-backed projects:** emit 4-6 bullets,
+  and AT LEAST 2 of them must lift CONCRETE detail from the scan --
+  subsystem names from the project map, named modules / DBs / pipelines
+  mentioned in the docs, total LOC by primary language from CODE STATS,
+  numbers from the git log (total commits, file count touched), or
+  specific frameworks pulled verbatim from MANIFESTS. If you emit a
+  3-bullet flat paraphrase of the hand-written body when a Local
+  folder scan is available, you are failing this task. Mine the scan.
 - Read each project's body carefully and obey its positioning rules.
   If the body says "never link as a URL" or "label it as 'Private project'",
   set ``link`` to ``null`` and ``link_label`` to the literal label
