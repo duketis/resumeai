@@ -35,9 +35,13 @@
 \raggedright
 \setlength{\tabcolsep}{0in}
 
+% Section headings need to read as TITLES, not as label text -- previous
+% ``\scshape\large`` was the same visual weight as ``\textbf{employer}``
+% inside entries, so PROFILE and ``Swinburne University`` looked equivalent.
+% Bold + small caps + Large gives a clear hierarchy: section > entry-name.
 \titleformat{\section}{
-  \vspace{2pt}\scshape\raggedright\large
-}{}{0em}{}[\color{black}\titlerule \vspace{2pt}]
+  \vspace{4pt}\bfseries\scshape\raggedright\Large
+}{}{0em}{}[\color{black}\titlerule \vspace{3pt}]
 \linespread{1.08}
 
 % ---- helper commands (resume-specific layout) -------------------------------
@@ -62,9 +66,15 @@
 
 \renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
 
-\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}]}
+% ``itemsep=2pt topsep=2pt parsep=0pt partopsep=0pt`` -- enumitem's
+% defaults add roughly half a baseline of glue between items, which made
+% the gaps between Education entries and between Key Achievements bullets
+% look uneven (and let the page-bottom stretch grow whichever bullet
+% happened to be near a break). Pinning all four spacing knobs keeps the
+% vertical rhythm uniform across all list-based sections.
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}, itemsep=2pt, topsep=2pt, parsep=0pt, partopsep=0pt]}
 \newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
-\newcommand{\resumeItemListStart}{\begin{itemize}[itemsep=2pt, topsep=2pt]}
+\newcommand{\resumeItemListStart}{\begin{itemize}[itemsep=2pt, topsep=2pt, parsep=0pt, partopsep=0pt]}
 \newcommand{\resumeItemListEnd}{\end{itemize}}
 
 %%%===========================================================================
@@ -88,7 +98,7 @@
 %----------PROFILE----------
 \BLOCK{if resume.summary}
 \section{Profile}
-\begin{itemize}[leftmargin=0.15in, label={}]
+\begin{itemize}[leftmargin=0.15in, label={}, topsep=2pt, partopsep=0pt]
   \small\item \VAR{resume.summary}
 \end{itemize}
 \BLOCK{endif}
@@ -96,7 +106,7 @@
 %----------SKILLS----------
 \BLOCK{if resume.skills}
 \section{Technical Skills}
-\begin{itemize}[leftmargin=0.15in, label={}]
+\begin{itemize}[leftmargin=0.15in, label={}, topsep=2pt, partopsep=0pt]
   \small\item{ \VAR{resume.skills | join(', ')} }
 \end{itemize}
 \BLOCK{endif}
