@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.agent.parser import AgentParseError
 from resumeai.agent.prompt import SYSTEM_PROMPT
 from resumeai.agent.tailor import tailor_resume
-from resumeai.llm.client import FakeLLMClient
 
 if TYPE_CHECKING:
     from resumeai.context.models import UserContext

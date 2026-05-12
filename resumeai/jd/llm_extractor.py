@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 if TYPE_CHECKING:
-    from resumeai.llm.client import LLMClient
+    from tailor_core.llm.client import LLMClient
 
 
 SYSTEM_PROMPT = """\

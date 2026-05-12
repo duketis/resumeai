@@ -179,6 +179,10 @@ show_error_codes = true
 pretty = true
 files = ["resumeai", "tests"]
 exclude = ["_private/", "UserContext/", "build/", "dist/"]
+# Setuptools' PEP 660 editable install uses a runtime finder hook that mypy
+# can't trace, so ``from tailor_core...`` fails to resolve. Point mypy at the
+# sibling source directly. Runtime resolution still goes through pip.
+mypy_path = "../ai-tailor-core"
 
 # Third-party libs without py.typed markers / stubs. Their public
 # surface is small enough that ignoring missing imports is fine.

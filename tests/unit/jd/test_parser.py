@@ -6,10 +6,10 @@ import json
 
 import httpx
 import respx
+from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.jd.models import EmploymentType, RemoteType, RoleType, Seniority
 from resumeai.jd.parser import parse_jd_text, parse_jd_url
-from resumeai.llm.client import FakeLLMClient
 
 _LLM_RESPONSE = {
     "title": "Senior Software Engineer",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 
 import pytest
+from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.jd.llm_extractor import (
     SYSTEM_PROMPT,
@@ -12,7 +13,6 @@ from resumeai.jd.llm_extractor import (
     _parse_extraction_payload,
     extract_with_llm,
 )
-from resumeai.llm.client import FakeLLMClient
 
 _VALID_RESPONSE = {
     "title": "Senior Software Engineer",

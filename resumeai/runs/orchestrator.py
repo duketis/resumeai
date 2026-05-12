@@ -37,10 +37,11 @@ from resumeai.verifier.verifier import (
 from resumeai.verifier.vision import verify_pdf_visually
 
 if TYPE_CHECKING:
+    from tailor_core.llm.client import LLMClient
+
     from resumeai.agent.models import TailoredResume
     from resumeai.context_files.store import ContextFileStore
     from resumeai.jd.models import JobRequirements
-    from resumeai.llm.client import LLMClient
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
     from resumeai.verifier.models import VerificationResult

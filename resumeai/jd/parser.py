@@ -17,8 +17,7 @@ from resumeai.jd.models import JobRequirements
 
 if TYPE_CHECKING:
     import httpx
-
-    from resumeai.llm.client import LLMClient
+    from tailor_core.llm.client import LLMClient
 
 
 def parse_jd_text(

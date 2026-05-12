@@ -23,10 +23,11 @@ from resumeai.agent.prompt import SYSTEM_PROMPT, build_user_prompt
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from tailor_core.llm.client import LLMClient
+
     from resumeai.context.models import UserContext
     from resumeai.context_files.models import ContextFile
     from resumeai.jd.models import JobRequirements
-    from resumeai.llm.client import LLMClient
 
 
 def tailor_resume(

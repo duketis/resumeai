@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from tailor_core.llm.client import ClaudeCliClient
 
 from resumeai import __version__
 from resumeai.api.deps import AppState
@@ -17,14 +18,14 @@ from resumeai.api.routes import context as context_routes
 from resumeai.api.routes import pages as pages_routes
 from resumeai.api.routes import tailor as tailor_routes
 from resumeai.context_files.store import SqliteContextFileStore
-from resumeai.llm.client import ClaudeCliClient
 from resumeai.runs.orchestrator import TailoringOrchestrator
 from resumeai.runs.store import SqliteRunsStore
 from resumeai.settings.store import SqliteSettingsStore
 
 if TYPE_CHECKING:
+    from tailor_core.llm.client import LLMClient
+
     from resumeai.context_files.store import ContextFileStore
-    from resumeai.llm.client import LLMClient
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
 
