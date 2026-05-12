@@ -312,9 +312,9 @@ def test_post_tailor_form_redirects_with_error_when_request_invalid(
 def test_get_settings_store_returns_app_singleton(client: TestClient) -> None:
     """``get_settings_store`` is exercised by reaching into the app directly."""
     from fastapi import Request  # noqa: PLC0415
+    from tailor_core.settings.store import InMemorySettingsStore  # noqa: PLC0415
 
     from resumeai.api.deps import get_settings_store  # noqa: PLC0415
-    from resumeai.settings.store import InMemorySettingsStore  # noqa: PLC0415
 
     # Pull the wired-up app from the TestClient and synthesise a Request.
     app = client.app

@@ -15,17 +15,18 @@ from fastapi import Request
 
 if TYPE_CHECKING:
     from tailor_core.context_files.store import ContextFileStore
+    from tailor_core.settings.store import SettingsStore
 
     from resumeai.runs.orchestrator import TailoringOrchestrator
     from resumeai.runs.store import RunsStore
-    from resumeai.settings.store import SettingsStore
+    from resumeai.settings.models import RuntimeSettings
 
 
 @dataclass(frozen=True, slots=True)
 class AppState:
     """Container for the app-wide singletons. Lives on ``app.state.app_state``."""
 
-    settings_store: SettingsStore
+    settings_store: SettingsStore[RuntimeSettings]
     runs_store: RunsStore
     orchestrator: TailoringOrchestrator
     context_file_store: ContextFileStore
@@ -36,7 +37,7 @@ def get_app_state(request: Request) -> AppState:
     return state
 
 
-def get_settings_store(request: Request) -> SettingsStore:
+def get_settings_store(request: Request) -> SettingsStore[RuntimeSettings]:
     return get_app_state(request).settings_store
 
 

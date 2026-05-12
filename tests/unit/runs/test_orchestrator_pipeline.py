@@ -26,6 +26,7 @@ from tailor_core.jd.models import (
     Seniority,
 )
 from tailor_core.llm.client import FakeLLMClient
+from tailor_core.settings.store import InMemorySettingsStore
 
 from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
 from resumeai.renderer.models import RenderResult
@@ -36,7 +37,7 @@ from resumeai.runs.orchestrator import (
     _generate_run_id,
 )
 from resumeai.runs.store import InMemoryRunsStore
-from resumeai.settings.store import InMemorySettingsStore
+from resumeai.settings.models import RuntimeSettings
 from resumeai.verifier.models import VerificationResult, VerificationStatus
 from resumeai.verifier.verifier import VerifierError
 
@@ -97,8 +98,8 @@ def runs() -> InMemoryRunsStore:
 
 
 @pytest.fixture
-def settings() -> InMemorySettingsStore:
-    return InMemorySettingsStore()
+def settings() -> InMemorySettingsStore[RuntimeSettings]:
+    return InMemorySettingsStore(settings_cls=RuntimeSettings)
 
 
 @pytest.fixture
@@ -109,7 +110,7 @@ def llm() -> FakeLLMClient:
 @pytest.fixture
 def orchestrator(
     runs: InMemoryRunsStore,
-    settings: InMemorySettingsStore,
+    settings: InMemorySettingsStore[RuntimeSettings],
     llm: FakeLLMClient,
     tmp_path: Path,
 ) -> TailoringOrchestrator:
@@ -251,7 +252,7 @@ def test_execute_with_jd_text_skips_the_fetch_step(
 
 def test_execute_passes_uploaded_context_files_to_tailor(
     runs: InMemoryRunsStore,
-    settings: InMemorySettingsStore,
+    settings: InMemorySettingsStore[RuntimeSettings],
     llm: FakeLLMClient,
     patched_pipeline: dict[str, Any],
     tmp_path: Path,

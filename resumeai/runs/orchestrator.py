@@ -40,10 +40,11 @@ if TYPE_CHECKING:
     from tailor_core.context_files.store import ContextFileStore
     from tailor_core.jd.models import JobRequirements
     from tailor_core.llm.client import LLMClient
+    from tailor_core.settings.store import SettingsStore
 
     from resumeai.agent.models import TailoredResume
     from resumeai.runs.store import RunsStore
-    from resumeai.settings.store import SettingsStore
+    from resumeai.settings.models import RuntimeSettings
     from resumeai.verifier.models import VerificationResult
 
 
@@ -66,7 +67,7 @@ class TailoringOrchestrator:
         self,
         *,
         runs_store: RunsStore,
-        settings_store: SettingsStore,
+        settings_store: SettingsStore[RuntimeSettings],
         llm_client: LLMClient,
         event_bus: RunEventBus | None = None,
         context_root: Path = DEFAULT_CONTEXT_ROOT,
