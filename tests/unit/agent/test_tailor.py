@@ -59,6 +59,57 @@ def test_tailor_resume_forwards_model_override(
     assert llm.calls[0][2] == "claude-sonnet-4-6"
 
 
+def test_tailor_resume_overwrites_llm_headline_with_resume_base_headline(
+    sample_jd: JobRequirements,
+    sample_context: UserContext,
+    well_formed_response_dict: dict[str, object],
+) -> None:
+    """LLM-emitted headline is stomped post-parse with the resume-base value.
+
+    Even if the agent (despite prompt rules) returns a different
+    headline, ``_enforce_passthroughs`` overwrites it. This is the
+    bulletproof anti-drift mechanism for fields the user has set
+    once in resume.yaml and doesn't want regenerated per run.
+    """
+    import json  # noqa: PLC0415
+
+    # Mutate the canned LLM response to drift the headline back into the
+    # forbidden tech-stack shape -- the post-process must stomp it.
+    payload = dict(well_formed_response_dict)
+    payload["headline"] = "TypeScript/React + Python on AWS"
+    llm = FakeLLMClient(default_response=json.dumps(payload))
+
+    assert sample_context.resume is not None
+    expected = sample_context.resume.headline
+
+    result = tailor_resume(sample_jd, sample_context, llm)
+    assert result.headline == expected
+    # Sanity: the LLM's drift attempt is NOT what we ended up with.
+    assert result.headline != "TypeScript/React + Python on AWS"
+
+
+def test_tailor_resume_keeps_llm_headline_when_resume_base_has_none(
+    sample_jd: JobRequirements,
+    sample_context: UserContext,
+    well_formed_response_dict: dict[str, object],
+) -> None:
+    """When the candidate hasn't set a base headline, the LLM's headline
+    is left alone (no resume.yaml value to copy)."""
+    import json  # noqa: PLC0415
+
+    payload = dict(well_formed_response_dict)
+    payload["headline"] = "Custom LLM-picked line"
+    llm = FakeLLMClient(default_response=json.dumps(payload))
+
+    assert sample_context.resume is not None
+    context_no_headline = sample_context.model_copy(
+        update={"resume": sample_context.resume.model_copy(update={"headline": None})}
+    )
+
+    result = tailor_resume(sample_jd, context_no_headline, llm)
+    assert result.headline == "Custom LLM-picked line"
+
+
 def test_tailor_resume_propagates_parse_errors_after_one_retry(
     sample_jd: JobRequirements,
     sample_context: UserContext,
