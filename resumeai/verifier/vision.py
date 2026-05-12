@@ -29,6 +29,11 @@ import os
 import re
 from typing import TYPE_CHECKING
 
+from anthropic.types import (
+    ImageBlockParam,
+    TextBlock,
+    TextBlockParam,
+)
 from pydantic import ValidationError
 
 from resumeai.verifier.models import (
@@ -203,28 +208,28 @@ def _call_vision_api(
     # OAuth token from ``claude setup-token`` works with this path.
     client = Anthropic(auth_token=oauth_token)
 
-    content: list[dict[str, object]] = []
+    content: list[ImageBlockParam | TextBlockParam] = []
     for png_bytes in pages:
         content.append(
-            {
-                "type": "image",
-                "source": {
+            ImageBlockParam(
+                type="image",
+                source={
                     "type": "base64",
                     "media_type": "image/png",
                     "data": base64.b64encode(png_bytes).decode("ascii"),
                 },
-            }
+            )
         )
     content.append(
-        {
-            "type": "text",
-            "text": (
+        TextBlockParam(
+            type="text",
+            text=(
                 "Above are the rendered pages of a candidate's tailored resume "
                 "PDF, in order. Review for VISUAL layout issues per the system "
                 "prompt schema. Cite the specific page number where each issue "
                 "appears."
             ),
-        }
+        )
     )
 
     try:
@@ -239,7 +244,10 @@ def _call_vision_api(
 
     text_chunks: list[str] = []
     for block in response.content:
-        if getattr(block, "type", None) == "text":
+        # Narrow with isinstance — the anthropic SDK's response content is a
+        # union of many block types (text, thinking, tool-use, etc.) and a
+        # ``getattr(...) == "text"`` check doesn't narrow the type for mypy.
+        if isinstance(block, TextBlock):
             text_chunks.append(block.text)
     if not text_chunks:
         raise VisionVerifierError("response had no text blocks")
