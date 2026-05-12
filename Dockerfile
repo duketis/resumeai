@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gnupg \
         wget \
         xz-utils \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 # Tectonic (single-binary LaTeX engine). Pinned + downloaded directly from
