@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
+from tailor_core.context.models import Contact
 
 from resumeai.agent.models import TailoredResume
-from resumeai.context.models import Contact
 from resumeai.renderer.models import RenderResult
 from resumeai.runs.models import Run, RunStatus, TailorRequest
 
@@ -182,8 +182,9 @@ def test_rerun_resets_existing_run_in_place_and_redirects(
     user sees a fresh in-flight pipeline instead of leftover state from
     the previous run.
     """
+    from tailor_core.context.models import Contact  # noqa: PLC0415
+
     from resumeai.agent.models import TailoredResume  # noqa: PLC0415
-    from resumeai.context.models import Contact  # noqa: PLC0415
 
     when = datetime(2026, 5, 11, tzinfo=UTC)
     runs.save(

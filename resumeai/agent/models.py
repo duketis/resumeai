@@ -9,8 +9,7 @@ the candidate's other options.
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from resumeai.context.models import Contact, Education
+from tailor_core.context.models import Contact, Education
 
 
 class TailoredBullet(BaseModel):
@@ -65,7 +64,7 @@ class TailoredResume(BaseModel):
 
     Names of identity fields (``name``, ``contact``, ``education``,
     ``certifications``) are passed through from the user's
-    :class:`~resumeai.context.models.ResumeBase`; the agent never invents
+    :class:`~tailor_core.context.models.ResumeBase`; the agent never invents
     or alters them.
 
     ``key_achievements`` is a cross-engagement highlight reel (drawn from

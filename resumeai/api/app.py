@@ -7,9 +7,11 @@ client by default.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
+from tailor_core.context_files.store import SqliteContextFileStore
 from tailor_core.llm.client import ClaudeCliClient
 
 from resumeai import __version__
@@ -17,15 +19,20 @@ from resumeai.api.deps import AppState
 from resumeai.api.routes import context as context_routes
 from resumeai.api.routes import pages as pages_routes
 from resumeai.api.routes import tailor as tailor_routes
-from resumeai.context_files.store import SqliteContextFileStore
 from resumeai.runs.orchestrator import TailoringOrchestrator
 from resumeai.runs.store import SqliteRunsStore
 from resumeai.settings.store import SqliteSettingsStore
 
+# Single SQLite file shared by every store the app uses. Lives outside the
+# repo so it survives ``docker compose down``. The lib's stores accept a
+# ``db_path`` arg so consumers can colocate everything in one file even
+# though tailor_core itself defaults to ``~/.tailor_core/tailor_core.db``.
+_RESUMEAI_DB_PATH = Path("~/.resumeai/resumeai.db").expanduser()
+
 if TYPE_CHECKING:
+    from tailor_core.context_files.store import ContextFileStore
     from tailor_core.llm.client import LLMClient
 
-    from resumeai.context_files.store import ContextFileStore
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
 
@@ -46,7 +53,7 @@ def create_app(
     """
     settings = settings_store or SqliteSettingsStore()
     runs = runs_store or SqliteRunsStore()
-    context_files = context_file_store or SqliteContextFileStore()
+    context_files = context_file_store or SqliteContextFileStore(db_path=_RESUMEAI_DB_PATH)
     llm = llm_client or ClaudeCliClient()
     orch = orchestrator or TailoringOrchestrator(
         runs_store=runs,

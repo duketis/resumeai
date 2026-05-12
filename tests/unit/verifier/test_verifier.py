@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from tailor_core.context.models import Contact
 from tailor_core.jd.models import JobRequirements, RoleType, Seniority
 from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
-from resumeai.context.models import Contact
 from resumeai.verifier.models import (
     IssueSeverity,
     VerificationResult,

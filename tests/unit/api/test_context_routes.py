@@ -6,13 +6,11 @@ import io
 from typing import TYPE_CHECKING
 
 from pypdf import PdfWriter
-
-from resumeai.context_files.models import ContextFileKind
+from tailor_core.context_files.models import ContextFileKind
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
-
-    from resumeai.context_files.store import InMemoryContextFileStore
+    from tailor_core.context_files.store import InMemoryContextFileStore
 
 
 def _empty_pdf() -> bytes:

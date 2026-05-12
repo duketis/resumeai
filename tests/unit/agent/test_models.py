@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
+from tailor_core.context.models import Contact
 
 from resumeai.agent.models import (
     TailoredBullet,
@@ -11,7 +12,6 @@ from resumeai.agent.models import (
     TailoredResume,
     TailoredWorkEntry,
 )
-from resumeai.context.models import Contact
 
 
 def _contact() -> Contact:

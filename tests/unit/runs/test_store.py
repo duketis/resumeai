@@ -117,10 +117,10 @@ def test_update_run_raises_for_unknown_id(store: RunsStore) -> None:
 
 
 def test_update_run_can_attach_jd_requirements_and_result(store: RunsStore) -> None:
+    from tailor_core.context.models import Contact  # noqa: PLC0415
     from tailor_core.jd.models import JobRequirements  # noqa: PLC0415
 
     from resumeai.agent.models import TailoredResume  # noqa: PLC0415
-    from resumeai.context.models import Contact  # noqa: PLC0415
     from resumeai.renderer.models import RenderResult  # noqa: PLC0415
 
     store.save(_make_run())

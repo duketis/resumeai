@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
+from tailor_core.context_files.extraction import ExtractionError, extract_text
+from tailor_core.context_files.models import ContextFileKind
+from tailor_core.local_projects.scanner import ScanError, scan_project
 
 from resumeai.api.deps import get_context_file_store
 from resumeai.api.templating import templates
-from resumeai.context_files.extraction import ExtractionError, extract_text
-from resumeai.context_files.models import ContextFileKind
-from resumeai.local_projects.scanner import ScanError, scan_project
 
 if TYPE_CHECKING:
-    from resumeai.context_files.store import ContextFileStore
+    from tailor_core.context_files.store import ContextFileStore
 
 
 router = APIRouter()

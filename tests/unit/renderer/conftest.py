@@ -5,13 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from tailor_core.context.models import Contact, Education
 
 from resumeai.agent.models import (
     TailoredBullet,
     TailoredResume,
     TailoredWorkEntry,
 )
-from resumeai.context.models import Contact, Education
 
 
 @pytest.fixture

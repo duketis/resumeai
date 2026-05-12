@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
+from tailor_core.context_files.store import InMemoryContextFileStore
 from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.api.app import create_app
-from resumeai.context_files.store import InMemoryContextFileStore
 from resumeai.runs.orchestrator import TailoringOrchestrator
 from resumeai.runs.store import InMemoryRunsStore
 from resumeai.settings.store import InMemorySettingsStore

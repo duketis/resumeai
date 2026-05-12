@@ -8,9 +8,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from tailor_core.context.models import Contact
 
 from resumeai.agent.models import TailoredResume
-from resumeai.context.models import Contact
 from resumeai.runs.models import Run, RunEvent, RunStatus, TailorRequest
 
 if TYPE_CHECKING:

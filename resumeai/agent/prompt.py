@@ -12,9 +12,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from tailor_core.jd.models import JobRequirements
-
-    from resumeai.context.models import (
+    from tailor_core.context.models import (
         CoverLetterEntry,
         GitAuditEntry,
         ProjectEntry,
@@ -22,7 +20,8 @@ if TYPE_CHECKING:
         UserContext,
         WorkHistoryEntry,
     )
-    from resumeai.context_files.models import ContextFile
+    from tailor_core.context_files.models import ContextFile
+    from tailor_core.jd.models import JobRequirements
 
 
 SYSTEM_PROMPT = """\

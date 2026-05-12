@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING
 from fastapi import Request
 
 if TYPE_CHECKING:
-    from resumeai.context_files.store import ContextFileStore
+    from tailor_core.context_files.store import ContextFileStore
+
     from resumeai.runs.orchestrator import TailoringOrchestrator
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore

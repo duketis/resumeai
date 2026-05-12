@@ -32,8 +32,9 @@ from resumeai.renderer.models import (
 )
 
 if TYPE_CHECKING:
+    from tailor_core.context.models import Education
+
     from resumeai.agent.models import TailoredProject, TailoredResume, TailoredWorkEntry
-    from resumeai.context.models import Education
 
 
 DEFAULT_TEMPLATES_DIR: Path = Path(__file__).parent / "templates"

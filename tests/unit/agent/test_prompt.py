@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tailor_core.context.models import (
+    Contact,
+    Education,
+    ResumeBase,
+    UserContext,
+    WorkHistoryEntry,
+)
 from tailor_core.jd.models import (
     EmploymentType,
     JobRequirements,
@@ -13,13 +20,6 @@ from tailor_core.jd.models import (
 )
 
 from resumeai.agent.prompt import SYSTEM_PROMPT, build_user_prompt
-from resumeai.context.models import (
-    Contact,
-    Education,
-    ResumeBase,
-    UserContext,
-    WorkHistoryEntry,
-)
 
 if TYPE_CHECKING:
     pass
@@ -309,7 +309,7 @@ def test_user_prompt_renders_work_history_legacy_role() -> None:
 
 
 def test_user_prompt_renders_cover_letter_without_role_or_company() -> None:
-    from resumeai.context.models import CoverLetterEntry  # noqa: PLC0415
+    from tailor_core.context.models import CoverLetterEntry  # noqa: PLC0415
 
     context = UserContext(
         cover_letters=(CoverLetterEntry(slug="generic", body="Dear hiring manager,"),)
@@ -322,7 +322,7 @@ def test_user_prompt_renders_cover_letter_without_role_or_company() -> None:
 def test_user_prompt_renders_cover_letter_without_body() -> None:
     """A registered letter with empty body still renders a header — used as
     a placeholder while a draft is in flight."""
-    from resumeai.context.models import CoverLetterEntry  # noqa: PLC0415
+    from tailor_core.context.models import CoverLetterEntry  # noqa: PLC0415
 
     context = UserContext(cover_letters=(CoverLetterEntry(slug="empty"),))
     prompt = build_user_prompt(JobRequirements(title="Eng"), context)
@@ -362,7 +362,7 @@ def test_user_prompt_surfaces_local_folder_scan_when_set() -> None:
     folder scanner), it lands in the user prompt under a dedicated
     ``Local folder scan`` block so the agent can mine it for richer
     bullet material than the hand-written .md body alone."""
-    from resumeai.context.models import ProjectEntry  # noqa: PLC0415
+    from tailor_core.context.models import ProjectEntry  # noqa: PLC0415
 
     context = UserContext(
         projects=(
@@ -383,7 +383,7 @@ def test_user_prompt_renders_minimal_project_entry() -> None:
     """Projects with only name + slug still render -- every optional field
     branch in ``_format_project`` is covered by this and the sample-context
     test above."""
-    from resumeai.context.models import ProjectEntry  # noqa: PLC0415
+    from tailor_core.context.models import ProjectEntry  # noqa: PLC0415
 
     context = UserContext(projects=(ProjectEntry(slug="x", name="X"),))
     prompt = build_user_prompt(JobRequirements(title="Eng"), context)
@@ -400,7 +400,7 @@ def test_user_prompt_renders_minimal_project_entry() -> None:
 
 def test_user_prompt_renders_minimal_git_audit_entry() -> None:
     """Audit entries with only repo (no role/period/summary) still render."""
-    from resumeai.context.models import GitAuditEntry  # noqa: PLC0415
+    from tailor_core.context.models import GitAuditEntry  # noqa: PLC0415
 
     context = UserContext(git_audit=(GitAuditEntry(slug="x", repo="acme/x"),))
     prompt = build_user_prompt(JobRequirements(title="Eng"), context)
@@ -434,7 +434,7 @@ def test_user_prompt_includes_uploaded_context_files(
     """Uploaded files surface as a dedicated section the agent can read."""
     from datetime import UTC, datetime  # noqa: PLC0415
 
-    from resumeai.context_files.models import ContextFile, ContextFileKind  # noqa: PLC0415
+    from tailor_core.context_files.models import ContextFile, ContextFileKind  # noqa: PLC0415
 
     files = [
         ContextFile(

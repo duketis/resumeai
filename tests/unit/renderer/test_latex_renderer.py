@@ -17,6 +17,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from tailor_core.context.models import Contact, Education
 
 from resumeai.agent.models import (
     TailoredBullet,
@@ -24,7 +25,6 @@ from resumeai.agent.models import (
     TailoredResume,
     TailoredWorkEntry,
 )
-from resumeai.context.models import Contact, Education
 from resumeai.renderer.latex_renderer import (
     compile_pdf,
     render_tailored_resume_latex,

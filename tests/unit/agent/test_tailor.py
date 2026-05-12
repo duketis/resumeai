@@ -12,9 +12,8 @@ from resumeai.agent.prompt import SYSTEM_PROMPT
 from resumeai.agent.tailor import tailor_resume
 
 if TYPE_CHECKING:
+    from tailor_core.context.models import UserContext
     from tailor_core.jd.models import JobRequirements
-
-    from resumeai.context.models import UserContext
 
 
 def test_tailor_resume_returns_validated_payload(

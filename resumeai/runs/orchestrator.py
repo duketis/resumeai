@@ -20,11 +20,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import httpx
+from tailor_core.context.loader import load_user_context
 from tailor_core.jd.fetcher import fetch_jd
 from tailor_core.jd.parser import parse_jd_text
 
 from resumeai.agent.tailor import tailor_resume
-from resumeai.context.loader import load_user_context
 from resumeai.renderer.latex_renderer import render_tailored_resume_latex
 from resumeai.runs.events import RunEventBus
 from resumeai.runs.models import Run, RunEvent, RunStatus, TailorRequest
@@ -37,11 +37,11 @@ from resumeai.verifier.verifier import (
 from resumeai.verifier.vision import verify_pdf_visually
 
 if TYPE_CHECKING:
+    from tailor_core.context_files.store import ContextFileStore
     from tailor_core.jd.models import JobRequirements
     from tailor_core.llm.client import LLMClient
 
     from resumeai.agent.models import TailoredResume
-    from resumeai.context_files.store import ContextFileStore
     from resumeai.runs.store import RunsStore
     from resumeai.settings.store import SettingsStore
     from resumeai.verifier.models import VerificationResult

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from tailor_core.context.models import Contact, UserContext
 from tailor_core.jd.models import (
     EmploymentType,
     FetchedJD,
@@ -27,7 +28,6 @@ from tailor_core.jd.models import (
 from tailor_core.llm.client import FakeLLMClient
 
 from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
-from resumeai.context.models import Contact, UserContext
 from resumeai.renderer.models import RenderResult
 from resumeai.runs import orchestrator as orch_mod
 from resumeai.runs.models import RunStatus, TailorRequest
@@ -43,7 +43,7 @@ from resumeai.verifier.verifier import VerifierError
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from resumeai.context_files.models import ContextFile
+    from tailor_core.context_files.models import ContextFile
 
 
 # -- fixtures + canned outputs ----------------------------------------------
@@ -257,8 +257,8 @@ def test_execute_passes_uploaded_context_files_to_tailor(
     tmp_path: Path,
 ) -> None:
     """When a ContextFileStore is wired in, its files reach the tailor call."""
-    from resumeai.context_files.models import ContextFileKind  # noqa: PLC0415
-    from resumeai.context_files.store import InMemoryContextFileStore  # noqa: PLC0415
+    from tailor_core.context_files.models import ContextFileKind  # noqa: PLC0415
+    from tailor_core.context_files.store import InMemoryContextFileStore  # noqa: PLC0415
 
     files = InMemoryContextFileStore()
     saved = files.add(
