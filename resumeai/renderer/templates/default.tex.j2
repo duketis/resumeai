@@ -155,13 +155,14 @@
 
 %----------PERSONAL PROJECTS----------
 %
-% Title row (name + link) sits in a tabular* sized to ``0.97\textwidth``.
-% The subtitle (description + stack) is OUTSIDE the tabular -- a regular
-% paragraph that wraps naturally. Putting the subtitle inside a
-% ``\resumeSubheading`` tabular lets a long stack list force the column
-% width past the page edge, clipping the right-column link
-% (``Private project`` showed as ``Privat``, ``github.com/duketis/jobai``
-% pressed against the page boundary). Wrapping subtitle = no overflow.
+% Title row uses ``\hfill`` instead of a ``tabular*`` so the right column
+% (link or "Private project" label) NEVER overflows the page width --
+% the previous ``tabular*{0.97\textwidth}`` clipped "Private project"
+% to "Privat" because the 0.15in list-margin + tabular's right edge
+% pushed past the page boundary. ``\hfill`` between the title and the
+% right-column lets LaTeX size both naturally to the available width.
+% Subtitle (description + stack) is a normal paragraph below so a long
+% stack wraps cleanly.
 \BLOCK{if resume.personal_projects}
 \section{Personal Projects}
 \resumeSubHeadingListStart
@@ -172,9 +173,7 @@
   \BLOCK{if project.description}\BLOCK{set _ = subtitle_parts.append(project.description) }\BLOCK{endif}
   \BLOCK{if project.stack}\BLOCK{set _ = subtitle_parts.append('\\emph{' ~ project.stack ~ '}') }\BLOCK{endif}
   \vspace{2pt}\item
-  \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
-    \textbf{\VAR{project.name}} & \VAR{right_col} \\
-  \end{tabular*}
+  \textbf{\VAR{project.name}}\hfill\VAR{right_col}
   \BLOCK{if subtitle_parts}\\\textit{\small \VAR{subtitle_parts | join(' $|$ ')}}\BLOCK{endif}
   \BLOCK{if project.bullets}
   \resumeItemListStart

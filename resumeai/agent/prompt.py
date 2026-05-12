@@ -152,6 +152,12 @@ Consultancy / placement structure:
 - Each client placement gets a short period like ``2021 (6 mo)`` or
   ``Oct 2024 (2 mo)`` instead of bare full dates -- the period is the
   duration AT that client, not the parent consultancy's overall tenure.
+- Order client engagements as follows: the LONGEST-running engagement
+  first (the candidate's anchor account -- for Jonathan that's
+  ``Premium Valet`` at 2020--2025), then every other engagement in
+  STRICT DESCENDING order by end date. A run of short placements that
+  all ended in the same year keeps strict end-date descending; never
+  surface the oldest-ended placement before a more-recent one.
 - Never list a client placement without the parent prefix. Recruiters
   reading 7 employers in 5 years will assume job-hopping; the truth is
   one employer (DiUS) placed across 7 clients.
