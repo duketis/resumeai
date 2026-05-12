@@ -1,11 +1,10 @@
-"""Tailoring runs — request, persistence, orchestration, event stream.
+"""Resume-tailoring run orchestration.
 
-A "run" is one trip through the pipeline:
-    JD → JobRequirements → UserContext → TailoredResume → Google Doc + PDF.
-
-The :class:`~resumeai.runs.orchestrator.TailoringOrchestrator` drives the
-pipeline asynchronously, persists the run state via ``RunsStore``, and emits
-events to in-memory subscribers consumed by the SSE route.
+The skeleton (Run / RunStatus / RunEvent / TailorRequest models,
+``RunsStore`` and ``RunEventBus`` implementations, the ``BaseOrchestrator``
+template-method) lives in ``tailor_core.runs``. This package supplies the
+resume-flavoured concrete orchestrator and the filename helper used to
+build per-JD PDF stems.
 """
 
 from __future__ import annotations

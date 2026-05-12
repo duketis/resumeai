@@ -13,15 +13,16 @@ from typing import TYPE_CHECKING
 from fastapi import FastAPI
 from tailor_core.context_files.store import SqliteContextFileStore
 from tailor_core.llm.client import ClaudeCliClient
+from tailor_core.runs.store import SqliteRunsStore
 from tailor_core.settings.store import SqliteSettingsStore
 
 from resumeai import __version__
+from resumeai.agent.models import TailoredResume
 from resumeai.api.deps import AppState
 from resumeai.api.routes import context as context_routes
 from resumeai.api.routes import pages as pages_routes
 from resumeai.api.routes import tailor as tailor_routes
 from resumeai.runs.orchestrator import TailoringOrchestrator
-from resumeai.runs.store import SqliteRunsStore
 from resumeai.settings.models import RuntimeSettings
 
 # Single SQLite file shared by every store the app uses. Lives outside the
@@ -33,15 +34,14 @@ _RESUMEAI_DB_PATH = Path("~/.resumeai/resumeai.db").expanduser()
 if TYPE_CHECKING:
     from tailor_core.context_files.store import ContextFileStore
     from tailor_core.llm.client import LLMClient
+    from tailor_core.runs.store import RunsStore
     from tailor_core.settings.store import SettingsStore
-
-    from resumeai.runs.store import RunsStore
 
 
 def create_app(
     *,
     settings_store: SettingsStore[RuntimeSettings] | None = None,
-    runs_store: RunsStore | None = None,
+    runs_store: RunsStore[TailoredResume] | None = None,
     llm_client: LLMClient | None = None,
     orchestrator: TailoringOrchestrator | None = None,
     context_file_store: ContextFileStore | None = None,
@@ -55,7 +55,7 @@ def create_app(
     settings = settings_store or SqliteSettingsStore(
         settings_cls=RuntimeSettings, db_path=_RESUMEAI_DB_PATH
     )
-    runs = runs_store or SqliteRunsStore()
+    runs = runs_store or SqliteRunsStore(tailored_cls=TailoredResume, db_path=_RESUMEAI_DB_PATH)
     context_files = context_file_store or SqliteContextFileStore(db_path=_RESUMEAI_DB_PATH)
     llm = llm_client or ClaudeCliClient()
     orch = orchestrator or TailoringOrchestrator(

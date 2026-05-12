@@ -26,18 +26,17 @@ from tailor_core.jd.models import (
     Seniority,
 )
 from tailor_core.llm.client import FakeLLMClient
+from tailor_core.runs.models import RenderResult, RunStatus, TailorRequest
+from tailor_core.runs.orchestrator import generate_run_id
+from tailor_core.runs.store import InMemoryRunsStore
 from tailor_core.settings.store import InMemorySettingsStore
 from tailor_core.verifier.models import VerificationResult, VerificationStatus
 
 from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
-from resumeai.renderer.models import RenderResult
 from resumeai.runs import orchestrator as orch_mod
-from resumeai.runs.models import RunStatus, TailorRequest
 from resumeai.runs.orchestrator import (
     TailoringOrchestrator,
-    _generate_run_id,
 )
-from resumeai.runs.store import InMemoryRunsStore
 from resumeai.settings.models import RuntimeSettings
 from resumeai.verifier.verifier import VerifierError
 
@@ -93,8 +92,8 @@ def _passed_verification() -> VerificationResult:
 
 
 @pytest.fixture
-def runs() -> InMemoryRunsStore:
-    return InMemoryRunsStore()
+def runs() -> InMemoryRunsStore[TailoredResume]:
+    return InMemoryRunsStore[TailoredResume]()
 
 
 @pytest.fixture
@@ -109,7 +108,7 @@ def llm() -> FakeLLMClient:
 
 @pytest.fixture
 def orchestrator(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     settings: InMemorySettingsStore[RuntimeSettings],
     llm: FakeLLMClient,
     tmp_path: Path,
@@ -173,9 +172,14 @@ def patched_pipeline(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     def fake_verify(*_: object, **__: object) -> VerificationResult:
         return _passed_verification()
 
-    monkeypatch.setattr(orch_mod, "fetch_jd", fake_fetch_jd)
-    monkeypatch.setattr(orch_mod, "parse_jd_text", fake_parse_jd_text)
-    monkeypatch.setattr(orch_mod, "load_user_context", fake_load_user_context)
+    # JD-fetch / JD-parse / context-load live in the lib's base
+    # orchestrator after the runs migration; patch there. The resume-
+    # specific tailor / render / verify still live in this resumeai module.
+    from tailor_core.runs import orchestrator as base_orch_mod  # noqa: PLC0415
+
+    monkeypatch.setattr(base_orch_mod, "fetch_jd", fake_fetch_jd)
+    monkeypatch.setattr(base_orch_mod, "parse_jd_text", fake_parse_jd_text)
+    monkeypatch.setattr(base_orch_mod, "load_user_context", fake_load_user_context)
     monkeypatch.setattr(orch_mod, "tailor_resume", fake_tailor_resume)
     monkeypatch.setattr(orch_mod, "render_tailored_resume_latex", fake_render)
     monkeypatch.setattr(orch_mod, "verify_resume", fake_verify)
@@ -186,7 +190,7 @@ def patched_pipeline(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
 
 
 def test_generate_run_id_has_expected_shape() -> None:
-    run_id = _generate_run_id()
+    run_id = generate_run_id()
     assert run_id.startswith("run_")
     # ``run_YYYYMMDDhhmmss_<token>`` -- timestamp piece is 14 digits.
     assert run_id[4:18].isdigit()
@@ -196,7 +200,7 @@ def test_generate_run_id_has_expected_shape() -> None:
 
 
 def test_create_run_persists_a_pending_record(
-    orchestrator: TailoringOrchestrator, runs: InMemoryRunsStore
+    orchestrator: TailoringOrchestrator, runs: InMemoryRunsStore[TailoredResume]
 ) -> None:
     run = orchestrator.create_run(TailorRequest(jd_text="paste"))
     assert run.status == RunStatus.PENDING
@@ -208,7 +212,7 @@ def test_create_run_persists_a_pending_record(
 
 def test_execute_drives_pipeline_to_succeeded_with_jd_url(
     orchestrator: TailoringOrchestrator,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     patched_pipeline: dict[str, Any],
 ) -> None:
     run = orchestrator.create_run(TailorRequest(jd_url="https://example.com/job/1"))
@@ -230,7 +234,7 @@ def test_execute_drives_pipeline_to_succeeded_with_jd_url(
 
 def test_execute_with_jd_text_skips_the_fetch_step(
     orchestrator: TailoringOrchestrator,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     patched_pipeline: dict[str, Any],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -241,7 +245,9 @@ def test_execute_with_jd_text_skips_the_fetch_step(
         fetched["called"] = True
         raise AssertionError("fetch_jd should not be called for jd_text runs")
 
-    monkeypatch.setattr(orch_mod, "fetch_jd", boom_fetch)
+    from tailor_core.runs import orchestrator as _base_orch  # noqa: PLC0415
+
+    monkeypatch.setattr(_base_orch, "fetch_jd", boom_fetch)
 
     run = orchestrator.create_run(TailorRequest(jd_text="paste this body"))
     finished = asyncio.run(orchestrator.execute(run.id))
@@ -251,7 +257,7 @@ def test_execute_with_jd_text_skips_the_fetch_step(
 
 
 def test_execute_passes_uploaded_context_files_to_tailor(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     settings: InMemorySettingsStore[RuntimeSettings],
     llm: FakeLLMClient,
     patched_pipeline: dict[str, Any],
@@ -321,7 +327,7 @@ def test_execute_empty_run_id_falls_back_to_unknown(
 
 def test_execute_marks_run_failed_when_a_pipeline_step_raises(
     orchestrator: TailoringOrchestrator,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     monkeypatch: pytest.MonkeyPatch,
     patched_pipeline: dict[str, Any],
 ) -> None:
@@ -392,6 +398,6 @@ def test_verify_safely_swallows_os_error_too(
 def test_event_bus_property_exposes_the_internal_bus(
     orchestrator: TailoringOrchestrator,
 ) -> None:
-    from resumeai.runs.events import RunEventBus  # noqa: PLC0415
+    from tailor_core.runs.events import RunEventBus  # noqa: PLC0415
 
     assert isinstance(orchestrator.event_bus, RunEventBus)

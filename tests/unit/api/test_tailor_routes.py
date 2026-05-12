@@ -9,18 +9,18 @@ from typing import TYPE_CHECKING
 
 import pytest
 from tailor_core.context.models import Contact
+from tailor_core.runs.models import Run, RunEvent, RunStatus, TailorRequest
 
 from resumeai.agent.models import TailoredResume
-from resumeai.runs.models import Run, RunEvent, RunStatus, TailorRequest
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from tailor_core.runs.store import InMemoryRunsStore
 
     from resumeai.runs.orchestrator import TailoringOrchestrator
-    from resumeai.runs.store import InMemoryRunsStore
 
 
-def _pending_run(run_id: str = "run_a") -> Run:
+def _pending_run(run_id: str = "run_a") -> Run[TailoredResume]:
     when = datetime(2026, 5, 11, tzinfo=UTC)
     return Run(
         id=run_id,
@@ -31,7 +31,7 @@ def _pending_run(run_id: str = "run_a") -> Run:
     )
 
 
-def _succeeded_run(run_id: str = "run_a") -> Run:
+def _succeeded_run(run_id: str = "run_a") -> Run[TailoredResume]:
     when = datetime(2026, 5, 11, tzinfo=UTC)
     return Run(
         id=run_id,
@@ -48,13 +48,13 @@ def _succeeded_run(run_id: str = "run_a") -> Run:
 
 def test_post_api_tailor_returns_run_id_and_schedules_execute(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``POST /api/tailor`` creates a run, schedules ``execute``, returns id."""
     executed: list[str] = []
 
-    async def fake_execute(self: object, run_id: str) -> Run:
+    async def fake_execute(self: object, run_id: str) -> Run[TailoredResume]:
         executed.append(run_id)
         return _succeeded_run(run_id)
 
@@ -85,7 +85,9 @@ def test_post_api_tailor_400_when_request_invalid(client: TestClient) -> None:
 # -- GET /api/runs/<id> -----------------------------------------------------
 
 
-def test_get_api_run_returns_serialised_record(client: TestClient, runs: InMemoryRunsStore) -> None:
+def test_get_api_run_returns_serialised_record(
+    client: TestClient, runs: InMemoryRunsStore[TailoredResume]
+) -> None:
     runs.save(_succeeded_run("run_x"))
     response = client.get("/api/runs/run_x")
     assert response.status_code == 200
@@ -103,7 +105,9 @@ def test_get_api_run_404_when_missing(client: TestClient) -> None:
 # -- GET /api/runs ----------------------------------------------------------
 
 
-def test_get_api_runs_lists_recent(client: TestClient, runs: InMemoryRunsStore) -> None:
+def test_get_api_runs_lists_recent(
+    client: TestClient, runs: InMemoryRunsStore[TailoredResume]
+) -> None:
     runs.save(_succeeded_run("run_one"))
     runs.save(_pending_run("run_two"))
     response = client.get("/api/runs?limit=10")
@@ -128,7 +132,7 @@ def test_get_api_run_events_404_when_run_missing(client: TestClient) -> None:
 
 
 def test_sse_event_stream_emits_state_then_returns_for_terminal_run(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """Subscribing to a terminal run sends the state frame and stops."""
@@ -151,7 +155,7 @@ def test_sse_event_stream_emits_state_then_returns_for_terminal_run(
 
 
 def test_sse_event_stream_publishes_live_events_for_running_run(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """A non-terminal run keeps the stream open and forwards bus events."""
@@ -194,7 +198,7 @@ def test_sse_event_stream_publishes_live_events_for_running_run(
 
 
 def test_sse_event_stream_respects_disconnect_check(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """When the client disconnects, the generator returns mid-stream."""
@@ -235,7 +239,7 @@ def test_sse_event_stream_respects_disconnect_check(
 
 def test_get_api_run_events_endpoint_returns_sse_for_terminal_run(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
 ) -> None:
     """``GET /api/runs/<id>/events`` returns an EventSourceResponse stream.
 
@@ -249,7 +253,7 @@ def test_get_api_run_events_endpoint_returns_sse_for_terminal_run(
 
 
 def test_sse_event_stream_when_initial_snapshot_missing(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """Branch 98->103: snapshot is None, generator goes straight to subscribe."""
@@ -284,7 +288,7 @@ def test_sse_event_stream_when_initial_snapshot_missing(
 
 
 def test_sse_event_stream_forwards_non_terminal_event_then_terminal(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """Branch 115->103: a non-terminal event is forwarded; loop continues."""
@@ -330,7 +334,7 @@ def test_sse_event_stream_forwards_non_terminal_event_then_terminal(
 
 
 def test_sse_event_stream_exits_when_bus_closes_without_terminal_event(
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
 ) -> None:
     """Branch 103->exit: subscribe loop ends because the bus was closed,

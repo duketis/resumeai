@@ -23,13 +23,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import jinja2
+from tailor_core.runs.models import RenderDiff, RenderResult, RenderStatus
 
-from resumeai.renderer.models import (
-    RenderDiff,
-    RenderError,
-    RenderResult,
-    RenderStatus,
-)
+
+class RenderError(RuntimeError):
+    """Raised when the render pipeline can't proceed (eg ``tectonic`` missing)."""
+
 
 if TYPE_CHECKING:
     from tailor_core.context.models import Education

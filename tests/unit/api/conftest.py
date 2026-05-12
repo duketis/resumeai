@@ -13,11 +13,12 @@ import pytest
 from fastapi.testclient import TestClient
 from tailor_core.context_files.store import InMemoryContextFileStore
 from tailor_core.llm.client import FakeLLMClient
+from tailor_core.runs.store import InMemoryRunsStore
 from tailor_core.settings.store import InMemorySettingsStore
 
+from resumeai.agent.models import TailoredResume
 from resumeai.api.app import create_app
 from resumeai.runs.orchestrator import TailoringOrchestrator
-from resumeai.runs.store import InMemoryRunsStore
 from resumeai.settings.models import RuntimeSettings
 
 if TYPE_CHECKING:
@@ -30,8 +31,8 @@ def store() -> InMemorySettingsStore[RuntimeSettings]:
 
 
 @pytest.fixture
-def runs() -> InMemoryRunsStore:
-    return InMemoryRunsStore()
+def runs() -> InMemoryRunsStore[TailoredResume]:
+    return InMemoryRunsStore[TailoredResume]()
 
 
 @pytest.fixture
@@ -47,7 +48,7 @@ def context_files() -> InMemoryContextFileStore:
 @pytest.fixture
 def orchestrator(
     store: InMemorySettingsStore[RuntimeSettings],
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     llm: FakeLLMClient,
     context_files: InMemoryContextFileStore,
     tmp_path: pytest.TempPathFactory,
@@ -64,7 +65,7 @@ def orchestrator(
 @pytest.fixture
 def client(
     store: InMemorySettingsStore[RuntimeSettings],
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     llm: FakeLLMClient,
     orchestrator: TailoringOrchestrator,
     context_files: InMemoryContextFileStore,

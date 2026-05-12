@@ -13,14 +13,16 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from tailor_core.runs.models import RunStatus, TailorRequest
 
 from resumeai.api.deps import get_orchestrator, get_runs_store
 from resumeai.api.templating import templates
-from resumeai.runs.models import RunStatus, TailorRequest
 
 if TYPE_CHECKING:
+    from tailor_core.runs.store import RunsStore
+
+    from resumeai.agent.models import TailoredResume
     from resumeai.runs.orchestrator import TailoringOrchestrator
-    from resumeai.runs.store import RunsStore
 
 
 router = APIRouter()
@@ -78,7 +80,7 @@ async def submit_tailor(
 @router.get("/runs", response_class=HTMLResponse)
 def runs_page(
     request: Request,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
@@ -92,7 +94,7 @@ def runs_page(
 
 @router.post("/runs/clear", include_in_schema=False)
 def clear_runs(
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> RedirectResponse:
     """Wipe every run record from the store. Per-run PDFs on disk stay."""
     deleted = runs.clear()
@@ -102,7 +104,7 @@ def clear_runs(
 @router.post("/runs/{run_id}/rerun", include_in_schema=False)
 async def rerun(
     run_id: str,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
     orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
 ) -> RedirectResponse:
     """Re-execute the same run id against the same ``TailorRequest``.
@@ -140,7 +142,7 @@ async def rerun(
 def run_detail_page(
     run_id: str,
     request: Request,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> HTMLResponse:
     run = runs.get(run_id)
     if run is None:
@@ -158,7 +160,7 @@ def run_detail_page(
 @router.get("/runs/{run_id}/pdf")
 def run_pdf(
     run_id: str,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> FileResponse:
     """Stream the run's rendered PDF over HTTP.
 

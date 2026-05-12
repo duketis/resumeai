@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 from tailor_core.context.models import Contact, Education
+from tailor_core.runs.models import RenderStatus
 
 from resumeai.agent.models import (
     TailoredBullet,
@@ -26,12 +27,12 @@ from resumeai.agent.models import (
     TailoredWorkEntry,
 )
 from resumeai.renderer.latex_renderer import (
+    RenderError,
     compile_pdf,
     render_tailored_resume_latex,
     render_tex,
     tex_escape,
 )
-from resumeai.renderer.models import RenderError, RenderStatus
 
 _TECTONIC_AVAILABLE = shutil.which("tectonic") is not None
 _skip_no_tectonic = pytest.mark.skipif(

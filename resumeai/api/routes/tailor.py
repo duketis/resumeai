@@ -8,15 +8,17 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
+from tailor_core.runs.models import Run, TailorRequest
 
 from resumeai.api.deps import get_orchestrator, get_runs_store
-from resumeai.runs.models import Run, TailorRequest
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
 
+    from tailor_core.runs.store import RunsStore
+
+    from resumeai.agent.models import TailoredResume
     from resumeai.runs.orchestrator import TailoringOrchestrator
-    from resumeai.runs.store import RunsStore
 
 
 router = APIRouter(prefix="/api")
@@ -27,7 +29,7 @@ _BACKGROUND_TASKS: set[asyncio.Task[object]] = set()
 @router.post("/tailor", status_code=202)
 async def kickoff_tailor(
     request: TailorRequest,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
     orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
 ) -> dict[str, str]:
     """Create a new run + kick off the pipeline. Returns the run id."""
@@ -45,7 +47,7 @@ async def kickoff_tailor(
 @router.get("/runs/{run_id}")
 def get_run(
     run_id: str,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> dict[str, Any]:
     run = runs.get(run_id)
     if run is None:
@@ -56,7 +58,7 @@ def get_run(
 @router.get("/runs")
 def list_runs(
     limit: int = 20,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
 ) -> dict[str, Any]:
     return {"runs": [_serialise_run(run) for run in runs.list_recent(limit=limit)]}
 
@@ -65,7 +67,7 @@ def list_runs(
 async def stream_run_events(
     run_id: str,
     request: Request,
-    runs: RunsStore = Depends(get_runs_store),
+    runs: RunsStore[TailoredResume] = Depends(get_runs_store),
     orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
 ) -> EventSourceResponse:
     """SSE stream for live run events. Emits the current state on connect,
@@ -83,7 +85,7 @@ async def stream_run_events(
 
 async def sse_event_stream(
     run_id: str,
-    runs: RunsStore,
+    runs: RunsStore[TailoredResume],
     orchestrator: TailoringOrchestrator,
     *,
     disconnect_check: Callable[[], Awaitable[bool]] | None = None,
@@ -122,7 +124,7 @@ async def sse_event_stream(
 # -- helpers -----------------------------------------------------------------
 
 
-def _serialise_run(run: Run) -> dict[str, Any]:
+def _serialise_run(run: Run[TailoredResume]) -> dict[str, Any]:
     """Pydantic model_dump_json round-trip → dict (handles datetime/enum)."""
     parsed: dict[str, Any] = json.loads(run.model_dump_json())
     return parsed

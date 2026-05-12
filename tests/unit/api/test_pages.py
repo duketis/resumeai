@@ -8,18 +8,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 from tailor_core.context.models import Contact
+from tailor_core.runs.models import RenderResult, Run, RunStatus, TailorRequest
 
 from resumeai.agent.models import TailoredResume
-from resumeai.renderer.models import RenderResult
-from resumeai.runs.models import Run, RunStatus, TailorRequest
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
+    from tailor_core.runs.store import InMemoryRunsStore
 
-    from resumeai.runs.store import InMemoryRunsStore
 
-
-def _make_succeeded_run(*, run_id: str, pdf_path: Path) -> Run:
+def _make_succeeded_run(*, run_id: str, pdf_path: Path) -> Run[TailoredResume]:
     when = datetime(2026, 5, 11, tzinfo=UTC)
     return Run(
         id=run_id,
@@ -38,7 +36,7 @@ def _make_succeeded_run(*, run_id: str, pdf_path: Path) -> Run:
 
 def test_run_pdf_streams_pdf_inline(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -71,7 +69,7 @@ def test_run_pdf_404_for_unknown_run(client: TestClient) -> None:
 
 def test_run_pdf_404_when_run_succeeded_but_pdf_missing(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -89,7 +87,7 @@ def test_run_pdf_404_when_run_succeeded_but_pdf_missing(
 
 def test_run_pdf_404_when_result_field_is_none(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
 ) -> None:
     """Run record exists but the pipeline never reached the render step."""
     when = datetime(2026, 5, 11, tzinfo=UTC)
@@ -108,7 +106,7 @@ def test_run_pdf_404_when_result_field_is_none(
 
 def test_clear_runs_route_wipes_store_and_redirects(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
 ) -> None:
     """``POST /runs/clear`` deletes every run and redirects to /runs with flash."""
     when = datetime(2026, 5, 11, tzinfo=UTC)
@@ -140,7 +138,7 @@ def test_clear_runs_route_wipes_store_and_redirects(
 
 def test_clear_runs_route_works_on_empty_store(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
 ) -> None:
     response = client.post("/runs/clear", follow_redirects=False)
     assert response.status_code == 303
@@ -173,7 +171,7 @@ def test_settings_page_renders(client: TestClient) -> None:
 
 def test_rerun_resets_existing_run_in_place_and_redirects(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """``POST /runs/<id>/rerun`` mutates the SAME run id, doesn't clone.
@@ -199,7 +197,7 @@ def test_rerun_resets_existing_run_in_place_and_redirects(
         )
     )
 
-    async def fake_execute(self: object, run_id: str) -> Run:
+    async def fake_execute(self: object, run_id: str) -> Run[TailoredResume]:
         return runs.get(run_id) or Run(
             id=run_id,
             request=TailorRequest(jd_text="x"),
@@ -239,7 +237,9 @@ def test_runs_page_renders_with_flash_query_param(client: TestClient) -> None:
     assert "Hello world" in response.text
 
 
-def test_run_detail_page_renders_for_known_run(client: TestClient, runs: InMemoryRunsStore) -> None:
+def test_run_detail_page_renders_for_known_run(
+    client: TestClient, runs: InMemoryRunsStore[TailoredResume]
+) -> None:
     when = datetime(2026, 5, 11, tzinfo=UTC)
     runs.save(
         Run(
@@ -265,12 +265,12 @@ def test_run_detail_page_404_for_unknown_run(client: TestClient) -> None:
 
 def test_post_tailor_form_creates_run_and_redirects_to_run_detail(
     client: TestClient,
-    runs: InMemoryRunsStore,
+    runs: InMemoryRunsStore[TailoredResume],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Submitting the Tailor form schedules execute and 303s to /runs/<id>."""
 
-    async def fake_execute(self: object, run_id: str) -> Run:
+    async def fake_execute(self: object, run_id: str) -> Run[TailoredResume]:
         when = datetime(2026, 5, 11, tzinfo=UTC)
         return Run(
             id=run_id,

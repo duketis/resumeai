@@ -1,23 +1,15 @@
-"""Render a :class:`~resumeai.agent.models.TailoredResume` into Google Docs.
+"""LaTeX renderer: render a :class:`~resumeai.agent.models.TailoredResume` to PDF.
 
 Pipeline:
 
-1. Copy the master template via Drive ``files.copy`` (master is sacred —
-   never written to). The copy gets a sensible default title.
-2. For each section we know how to render (summary, skills, work history,
-   education, certifications):
-   - Re-read the doc to get fresh structural indices (each per-section
-     batch shifts indices for everything after it).
-   - Find the heading by name (case-insensitive alias match).
-   - Issue a ``documents.batchUpdate`` that deletes the existing content
-     under the heading and inserts the tailored content. The batch is
-     atomic — a botched section can't trash the whole doc.
-3. Export the final doc to PDF and return a
-   :class:`~resumeai.renderer.models.RenderResult`.
-
-Phase 5 v1 inserts content as plain text; the inserted paragraphs inherit
-the style at the insertion point. Promoting to per-paragraph in-place text
-swaps (which preserves bullet styling) is a v0.6.x follow-up.
+1. Compose the .tex string by feeding the tailored resume into a Jinja2
+   template. Every user-derived value passes through
+   :func:`~resumeai.renderer.latex_renderer.tex_escape` first so LaTeX
+   control characters can't break the document.
+2. Invoke ``tectonic`` as a subprocess to compile the .tex to a PDF.
+   Tectonic is a single-binary LaTeX engine; no external state needed.
+3. Return a :class:`~tailor_core.runs.models.RenderResult` whose
+   ``doc_url`` points at the rendered PDF on disk.
 """
 
 from __future__ import annotations
