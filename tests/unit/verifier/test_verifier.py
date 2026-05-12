@@ -10,13 +10,13 @@ import pytest
 from tailor_core.context.models import Contact
 from tailor_core.jd.models import JobRequirements, RoleType, Seniority
 from tailor_core.llm.client import FakeLLMClient
-
-from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
-from resumeai.verifier.models import (
+from tailor_core.verifier.models import (
     IssueSeverity,
     VerificationResult,
     VerificationStatus,
 )
+
+from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
 from resumeai.verifier.verifier import (
     SYSTEM_PROMPT,
     VerifierError,

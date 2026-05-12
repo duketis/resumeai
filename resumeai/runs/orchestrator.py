@@ -41,11 +41,11 @@ if TYPE_CHECKING:
     from tailor_core.jd.models import JobRequirements
     from tailor_core.llm.client import LLMClient
     from tailor_core.settings.store import SettingsStore
+    from tailor_core.verifier.models import VerificationResult
 
     from resumeai.agent.models import TailoredResume
     from resumeai.runs.store import RunsStore
     from resumeai.settings.models import RuntimeSettings
-    from resumeai.verifier.models import VerificationResult
 
 
 DEFAULT_CONTEXT_ROOT = Path("UserContext")

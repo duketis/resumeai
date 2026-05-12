@@ -245,7 +245,7 @@ def test_clear_on_empty_store_returns_zero(store: RunsStore) -> None:
 
 def test_update_run_persists_verification_field(store: RunsStore) -> None:
     """Covers the ``verification`` branch in ``update_run``."""
-    from resumeai.verifier.models import VerificationResult, VerificationStatus  # noqa: PLC0415
+    from tailor_core.verifier.models import VerificationResult, VerificationStatus  # noqa: PLC0415
 
     store.save(_make_run())
     verification = VerificationResult(

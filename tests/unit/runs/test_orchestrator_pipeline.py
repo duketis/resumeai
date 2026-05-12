@@ -27,6 +27,7 @@ from tailor_core.jd.models import (
 )
 from tailor_core.llm.client import FakeLLMClient
 from tailor_core.settings.store import InMemorySettingsStore
+from tailor_core.verifier.models import VerificationResult, VerificationStatus
 
 from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
 from resumeai.renderer.models import RenderResult
@@ -38,7 +39,6 @@ from resumeai.runs.orchestrator import (
 )
 from resumeai.runs.store import InMemoryRunsStore
 from resumeai.settings.models import RuntimeSettings
-from resumeai.verifier.models import VerificationResult, VerificationStatus
 from resumeai.verifier.verifier import VerifierError
 
 if TYPE_CHECKING:
