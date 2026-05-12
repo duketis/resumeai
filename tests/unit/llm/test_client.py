@@ -56,17 +56,50 @@ def test_claude_cli_returns_stdout_on_success(mocker: MockerFixture) -> None:
     run = mocker.patch("subprocess.run", return_value=_completed(stdout="response"))
 
     client = ClaudeCliClient()
-    result = client.complete(system="sys", user="user")
+    result = client.complete(system="sys", user="user prompt body")
 
     assert result == "response"
     cmd = run.call_args.args[0]
     assert cmd[0] == "/usr/local/bin/claude"
     assert "--print" in cmd
-    assert "--system-prompt" in cmd
-    assert "sys" in cmd
+    # System prompt is written to a temp file (avoids ARG_MAX / E2BIG when
+    # the prompt is large) and the path is passed via --system-prompt-file.
+    assert "--system-prompt-file" in cmd
+    file_arg = cmd[cmd.index("--system-prompt-file") + 1]
+    assert file_arg.endswith(".txt")
     assert "--model" in cmd
     assert DEFAULT_MODEL in cmd
-    assert cmd[-1] == "user"
+    # The user prompt is piped via stdin, not appended to argv.
+    assert "user prompt body" not in cmd
+    assert run.call_args.kwargs.get("input") == "user prompt body"
+
+
+def test_claude_cli_writes_system_prompt_to_temp_file_then_cleans_up(
+    mocker: MockerFixture,
+) -> None:
+    """The temp file holding the system prompt is unlinked after the call."""
+    from pathlib import Path  # noqa: PLC0415
+
+    captured: dict[str, str] = {}
+
+    def fake_run(
+        cmd: list[str],
+        **_: object,
+    ) -> subprocess.CompletedProcess[str]:
+        path_str = cmd[cmd.index("--system-prompt-file") + 1]
+        captured["path"] = path_str
+        captured["content"] = Path(path_str).read_text(encoding="utf-8")
+        return subprocess.CompletedProcess(args=cmd, returncode=0, stdout="ok", stderr="")
+
+    mocker.patch("shutil.which", return_value="/usr/local/bin/claude")
+    mocker.patch("subprocess.run", side_effect=fake_run)
+
+    ClaudeCliClient().complete(system="my system prompt", user="u")
+
+    assert captured["content"] == "my system prompt"
+    # File is removed after complete() returns -- prompt content doesn't
+    # linger in /tmp once the call is done.
+    assert not Path(captured["path"]).exists()
 
 
 def test_claude_cli_uses_supplied_model(mocker: MockerFixture) -> None:

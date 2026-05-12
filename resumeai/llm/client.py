@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
+from pathlib import Path
 from typing import Protocol
 
 
@@ -53,30 +55,48 @@ class ClaudeCliClient:
 
     def complete(self, *, system: str, user: str, model: str | None = None) -> str:
         binary = shutil.which(self._claude_bin) or self._claude_bin
-        cmd = [
-            binary,
-            "--print",
-            "--system-prompt",
-            system,
-            "--model",
-            model or DEFAULT_MODEL,
-            user,
-        ]
+        # The system + user prompts can total 100+ KB once the master
+        # resume, reference resumes, work history, and JD are stitched in.
+        # Passing those as argv blows past the OS ``ARG_MAX`` limit
+        # (~256 KB on Linux) and fails with E2BIG / "Argument list too
+        # long". Write the system prompt to a temp file (consumed via
+        # ``--system-prompt-file``) and pipe the user prompt over stdin
+        # -- both paths are unbounded.
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            suffix=".txt",
+            delete=False,
+        ) as tf:
+            tf.write(system)
+            system_path = Path(tf.name)
         try:
-            proc = subprocess.run(  # noqa: S603 — args are a list, no shell expansion
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=self._timeout,
-                check=False,
-            )
-        except FileNotFoundError as exc:
-            raise LLMError(
-                f"`claude` CLI not found at {self._claude_bin!r}. "
-                "Install Claude Code from https://claude.com/claude-code."
-            ) from exc
-        except subprocess.TimeoutExpired as exc:
-            raise LLMError(f"`claude` CLI timed out after {self._timeout}s") from exc
+            cmd = [
+                binary,
+                "--print",
+                "--system-prompt-file",
+                str(system_path),
+                "--model",
+                model or DEFAULT_MODEL,
+            ]
+            try:
+                proc = subprocess.run(  # noqa: S603 — args are a list, no shell expansion
+                    cmd,
+                    input=user,
+                    capture_output=True,
+                    text=True,
+                    timeout=self._timeout,
+                    check=False,
+                )
+            except FileNotFoundError as exc:
+                raise LLMError(
+                    f"`claude` CLI not found at {self._claude_bin!r}. "
+                    "Install Claude Code from https://claude.com/claude-code."
+                ) from exc
+            except subprocess.TimeoutExpired as exc:
+                raise LLMError(f"`claude` CLI timed out after {self._timeout}s") from exc
+        finally:
+            system_path.unlink(missing_ok=True)
 
         if proc.returncode != 0:
             stderr = proc.stderr.strip() or "(no stderr)"
