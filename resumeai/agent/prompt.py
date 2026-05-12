@@ -177,6 +177,15 @@ Key Achievements rules:
 Personal Projects rules:
 - Emit ``personal_projects`` ONLY from the CANDIDATE CONTEXT ``Projects``
   section. Never invent a project.
+- For projects with a ``Local folder scan``: MINE THE SCAN for resume
+  bullets. The scan exposes the project's README files, every CLAUDE.md
+  / PLAN_*.md / ARCHITECTURE.md across subfolders, the verbatim
+  dependency manifests, and a code-stats breakdown (LOC by language).
+  Treat any shipped feature, architectural decision, or quantified
+  capability in those docs as legitimate bullet material -- prefer
+  these over paraphrasing the hand-written project body. Lift concrete
+  numbers (LOC, test counts, sub-system counts) verbatim where they
+  appear in the scan.
 - Read each project's body carefully and obey its positioning rules.
   If the body says "never link as a URL" or "label it as 'Private project'",
   set ``link`` to ``null`` and ``link_label`` to the literal label

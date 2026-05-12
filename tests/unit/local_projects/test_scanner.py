@@ -132,6 +132,125 @@ def test_scan_caps_docs_total_budget(tmp_path: Path) -> None:
     assert "scan budget" in output or "total budget hit" in output
 
 
+# -- MANIFESTS section -----------------------------------------------------
+
+
+def test_scan_pulls_pyproject_and_package_json_manifests(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\ndependencies = ["fastapi", "polars"]\n'
+    )
+    (tmp_path / "package.json").write_text('{"name": "front", "dependencies": {"react": "18.0.0"}}')
+    output = scan_project(tmp_path)
+    assert "## MANIFESTS" in output
+    assert "### pyproject.toml" in output
+    assert "fastapi" in output
+    assert "### package.json" in output
+    assert "react" in output
+
+
+def test_scan_pulls_subfolder_manifests_too(tmp_path: Path) -> None:
+    (tmp_path / "api").mkdir()
+    (tmp_path / "api" / "Dockerfile").write_text("FROM python:3.12\nRUN pip install fastapi")
+    (tmp_path / "frontend").mkdir()
+    (tmp_path / "frontend" / "package.json").write_text('{"name": "fe"}')
+    output = scan_project(tmp_path)
+    assert "### api/Dockerfile" in output
+    assert "FROM python:3.12" in output
+    assert "### frontend/package.json" in output
+
+
+def test_scan_handles_missing_manifests(tmp_path: Path) -> None:
+    output = scan_project(tmp_path)
+    assert "no dep / build manifests" in output
+
+
+def test_scan_truncates_long_manifest(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("x" * 5000)
+    output = scan_project(tmp_path, per_manifest_max_chars=200)
+    assert "more chars truncated" in output
+
+
+def test_scan_handles_unreadable_manifest(tmp_path: Path, mocker: MockerFixture) -> None:
+    (tmp_path / "pyproject.toml").write_text("ok")
+    real_read_text = Path.read_text
+
+    def selective_boom(self: Path, *a: object, **kw: object) -> str:
+        if self.name == "pyproject.toml":
+            raise OSError("perm denied")
+        return real_read_text(self, *a, **kw)  # type: ignore[arg-type]
+
+    mocker.patch.object(Path, "read_text", selective_boom)
+    output = scan_project(tmp_path)
+    assert "could not read" in output
+
+
+def test_scan_caps_manifests_total_budget(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("a" * 6000)
+    (tmp_path / "package.json").write_text("b" * 6000)
+    output = scan_project(tmp_path, per_manifest_max_chars=6000, manifests_total_max_chars=4000)
+    assert "scan budget" in output or "budget hit" in output
+
+
+# -- CODE STATS section ----------------------------------------------------
+
+
+def test_scan_reports_code_stats_by_extension(tmp_path: Path) -> None:
+    (tmp_path / "main.py").write_text("a\nb\nc\n")
+    (tmp_path / "helper.py").write_text("x\ny\n")
+    (tmp_path / "ui.tsx").write_text("const x = 1;\n")
+    output = scan_project(tmp_path)
+    assert "## CODE STATS" in output
+    # Python lines: 5; TSX lines: 1. Python ranked first (more LOC).
+    py_idx = output.index("- .py:")
+    tsx_idx = output.index("- .tsx:")
+    assert py_idx < tsx_idx
+    assert "5 LOC across 2 file(s)" in output
+    assert "1 LOC across 1 file(s)" in output
+
+
+def test_scan_walks_into_subfolders_for_code_stats(tmp_path: Path) -> None:
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src" / "a.py").write_text("a\nb\n")
+    (tmp_path / "src" / "deep").mkdir()
+    (tmp_path / "src" / "deep" / "b.py").write_text("c\n")
+    output = scan_project(tmp_path)
+    assert "3 LOC across 2 file(s)" in output
+
+
+def test_scan_handles_no_code_files(tmp_path: Path) -> None:
+    (tmp_path / "notes.txt").write_text("nothing source-like")
+    output = scan_project(tmp_path)
+    assert "no recognised source files" in output
+
+
+def test_scan_respects_code_stats_max_files(tmp_path: Path) -> None:
+    """A massive monorepo doesn't blow up the scanner -- walks stop at the cap."""
+    src = tmp_path / "src"
+    src.mkdir()
+    for i in range(20):
+        (src / f"f_{i:02d}.py").write_text("x\n")
+    output = scan_project(tmp_path, code_stats_max_files=5)
+    assert "walked first 5 files" in output
+
+
+def test_scan_skips_unreadable_code_file(tmp_path: Path, mocker: MockerFixture) -> None:
+    """A file we can't read is silently skipped (no scan-wide failure)."""
+    (tmp_path / "good.py").write_text("a\nb\n")
+    (tmp_path / "bad.py").write_text("c\n")
+
+    real_open = Path.open
+
+    def selective_boom(self: Path, *args: object, **kwargs: object) -> object:
+        if self.name == "bad.py":
+            raise OSError("perm denied")
+        return real_open(self, *args, **kwargs)  # type: ignore[call-overload]
+
+    mocker.patch.object(Path, "open", selective_boom)
+    output = scan_project(tmp_path)
+    # Good file still counted; total only includes good.py's 2 lines.
+    assert "2 LOC across 2 file(s)" in output
+
+
 # -- Structure section -----------------------------------------------------
 
 
