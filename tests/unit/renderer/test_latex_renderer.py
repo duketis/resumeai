@@ -222,15 +222,15 @@ class TestRenderTex:
         # Key achievements rendered as bullets
         assert "Built and maintain jobai" in out
         # Personal projects: public one has a clickable href, private one
-        # has a plain "Private project" right column. ``\resumeSubheading``
-        # is a 4-arg macro -- the names appear inside the first {arg} and
-        # the macro adds the \textbf{} itself. The right column is wrapped
-        # in ``{\small ...}`` so a long URL doesn't overflow the column.
+        # has a plain "Private project" right column. Project rows use a
+        # bespoke ``\textbf{name}\hfill<right_col>`` title row (not the
+        # ``\resumeSubheading`` macro -- that's for work history). The
+        # right column is wrapped in ``{\small ...}`` so long content
+        # stays compact next to the bold title.
         assert r"\href{https://github.com/duketis/jobai}{github.com/duketis/jobai}" in out
         assert r"{\small Private project}" in out  # right column literal
-        assert r"\resumeSubheading" in out
-        assert "{jobai}" in out
-        assert "{Strategy Miner}" in out
+        assert r"\textbf{jobai}\hfill" in out
+        assert r"\textbf{Strategy Miner}\hfill" in out
 
     def test_empty_section_is_omitted(self, minimal_tailored: TailoredResume) -> None:
         out = render_tex(minimal_tailored)
@@ -278,8 +278,9 @@ class TestRenderTex:
         # No ``{\small \href...}`` or ``{\small <label>}`` wrapper since
         # the project has neither a link nor a label to wrap.
         assert r"{\small \href" not in out
-        # Title row is ``\textbf{X} & \\`` with the right cell empty.
-        assert r"\textbf{X} &  \\" in out
+        # Title row uses \hfill + empty right_col -- ``\textbf{X}\hfill`` with
+        # nothing after the \hfill on that line.
+        assert r"\textbf{X}\hfill" in out
 
     def test_personal_project_with_link_but_no_label_uses_link_as_label(self) -> None:
         tailored = TailoredResume(
