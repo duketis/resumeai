@@ -137,13 +137,18 @@
 \BLOCK{endif}
 
 %----------KEY ACHIEVEMENTS----------
+% Wrapped in ``resumeItemListStart`` (which preserves the default bullet
+% marker) rather than ``resumeSubHeadingListStart`` (which sets
+% ``label={}`` so the marker disappears). The achievements are plain-
+% prose bullets, not subheading entries, so they should render with the
+% same `\bullet` dots Experience and Personal Projects use.
 \BLOCK{if resume.key_achievements}
 \section{Key Achievements}
-\resumeSubHeadingListStart
+\resumeItemListStart
 \BLOCK{for achievement in resume.key_achievements}
   \resumeItem{\VAR{achievement}}
 \BLOCK{endfor}
-\resumeSubHeadingListEnd
+\resumeItemListEnd
 \BLOCK{endif}
 
 %----------EXPERIENCE----------
