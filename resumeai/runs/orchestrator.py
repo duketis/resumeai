@@ -197,9 +197,13 @@ class TailoringOrchestrator:
         update_run(self._runs, run_id, result=result)
 
         # Step 6: verify (QC pass — never blocks a SUCCEEDED run, surfaces
-        # findings on the run detail page so the user can review).
+        # findings on the run detail page so the user can review). PDF
+        # path passes through so the verifier can run page-count checks.
         await self._step(run_id, RunStatus.VERIFYING, "running QC verification")
-        verification = await asyncio.to_thread(self._verify_safely, requirements, tailored)
+        rendered_pdf_path = output_dir / f"{stem}.pdf"
+        verification = await asyncio.to_thread(
+            self._verify_safely, requirements, tailored, rendered_pdf_path
+        )
         update_run(self._runs, run_id, verification=verification)
 
         # Done.
@@ -214,12 +218,15 @@ class TailoringOrchestrator:
         return finished
 
     def _verify_safely(
-        self, requirements: JobRequirements, tailored: TailoredResume
+        self,
+        requirements: JobRequirements,
+        tailored: TailoredResume,
+        pdf_path: Path | None = None,
     ) -> VerificationResult:
         """Run verification but never let it block the run — fall back to a
         synthetic ``CONCERNS`` result on any failure."""
         try:
-            return verify_resume(requirements, tailored, self._llm)
+            return verify_resume(requirements, tailored, self._llm, pdf_path=pdf_path)
         except (VerifierError, OSError, RuntimeError) as exc:
             return fallback_concerns_result(f"{type(exc).__name__}: {exc}")
 

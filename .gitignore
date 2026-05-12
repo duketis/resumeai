@@ -92,5 +92,7 @@ resumeai/api/static/
 # Session-context anchor — local-only, never committed.
 CLAUDE.md
 _docker_claude/
-runs/
+# Top-level only -- the rendered-PDF output dir. Anchored so the
+# ``resumeai/runs/`` Python module isn't ignored.
+/runs/
 .DS_Store

@@ -32,6 +32,8 @@ from resumeai.verifier.models import (
 )
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from resumeai.agent.models import TailoredResume
     from resumeai.jd.models import JobRequirements
     from resumeai.llm.client import LLMClient
@@ -92,17 +94,88 @@ class VerifierError(RuntimeError):
     """Raised when the verifier's response can't be parsed."""
 
 
+TARGET_MAX_PAGES = 3
+
+
 def verify_resume(
     jd: JobRequirements,
     tailored: TailoredResume,
     llm: LLMClient,
     *,
     model: str | None = None,
+    pdf_path: Path | None = None,
 ) -> VerificationResult:
-    """Run the QC pass and return a structured :class:`VerificationResult`."""
+    """Run the QC pass and return a structured :class:`VerificationResult`.
+
+    When ``pdf_path`` is provided we additionally count pages with
+    ``pypdf`` and append a programmatic length-check issue if the
+    rendered output exceeds :data:`TARGET_MAX_PAGES`. This catches
+    "agent wrote a great resume but the PDF is 4 pages" before the
+    user opens Preview.
+    """
     user_prompt = build_verifier_prompt(jd, tailored)
     raw = llm.complete(system=SYSTEM_PROMPT, user=user_prompt, model=model)
-    return parse_verifier_response(raw)
+    result = parse_verifier_response(raw)
+    if pdf_path is not None:
+        length_issue = _check_pdf_length(pdf_path)
+        if length_issue is not None:
+            result = _merge_issue(result, length_issue)
+    return result
+
+
+def _check_pdf_length(pdf_path: Path) -> VerificationIssue | None:
+    """Programmatically check rendered PDF length against the target.
+
+    Returns ``None`` when the PDF is at or under the target page count.
+    Returns a ``warn``-severity issue when it overflows. Failures
+    reading the PDF degrade silently (return ``None``) -- the LLM
+    verifier already pinged on the run, no point fabricating a
+    second failure on top.
+    """
+    from pypdf import PdfReader  # noqa: PLC0415
+    from pypdf.errors import PdfReadError  # noqa: PLC0415
+
+    try:
+        reader = PdfReader(str(pdf_path))
+        page_count = len(reader.pages)
+    except (OSError, PdfReadError):
+        return None
+    if page_count <= TARGET_MAX_PAGES:
+        return None
+    return VerificationIssue(
+        severity=IssueSeverity.WARN,
+        category="page_overflow",
+        message=(
+            f"Rendered PDF is {page_count} pages; target is "
+            f"≤{TARGET_MAX_PAGES} for a senior-eng resume."
+        ),
+        suggestion=(
+            "Trim a bullet or two from the longest work-history entries, "
+            "or compress Key Achievements (6→5 bullets). Re-run."
+        ),
+    )
+
+
+def _merge_issue(result: VerificationResult, new_issue: VerificationIssue) -> VerificationResult:
+    """Append a programmatic issue to an LLM-verifier result.
+
+    Promotes the status if the new issue is more severe than the
+    existing finding (a ``warn`` added to a ``passed`` result flips
+    the result to ``concerns``).
+    """
+    bumped_status = result.status
+    is_warn = new_issue.severity is IssueSeverity.WARN
+    is_error = new_issue.severity is IssueSeverity.ERROR
+    if is_warn and result.status is VerificationStatus.PASSED:
+        bumped_status = VerificationStatus.CONCERNS
+    elif is_error and result.status is not VerificationStatus.FAILED:
+        bumped_status = VerificationStatus.FAILED
+    return result.model_copy(
+        update={
+            "status": bumped_status,
+            "issues": (*result.issues, new_issue),
+        }
+    )
 
 
 def build_verifier_prompt(jd: JobRequirements, tailored: TailoredResume) -> str:

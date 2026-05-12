@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -192,3 +193,71 @@ def test_fallback_concerns_result_synthesises_warn_issue() -> None:
 def test_fallback_concerns_result_round_trips() -> None:
     result = fallback_concerns_result("boom")
     assert VerificationResult.model_validate_json(result.model_dump_json()) == result
+
+
+# -- programmatic page-count check --------------------------------------
+
+
+def _write_pdf(path: Path, *, pages: int) -> None:
+    """Stage a real PDF with the requested page count for the
+    pypdf-based length check."""
+    from pypdf import PdfWriter  # noqa: PLC0415
+
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=595, height=842)
+    with path.open("wb") as fh:
+        writer.write(fh)
+
+
+def test_verify_resume_flags_overflowing_pdf_as_concern(tmp_path: Path) -> None:
+    """A 4-page rendered PDF triggers a page_overflow warn issue and
+    promotes a PASSED result to CONCERNS."""
+    pdf = tmp_path / "resume.pdf"
+    _write_pdf(pdf, pages=4)
+
+    llm = FakeLLMClient(default_response=json.dumps(_PASSED_PAYLOAD))
+    result = verify_resume(_jd(), _tailored(), llm, pdf_path=pdf)
+
+    assert result.status is VerificationStatus.CONCERNS
+    overflow_issues = [i for i in result.issues if i.category == "page_overflow"]
+    assert len(overflow_issues) == 1
+    assert "4 pages" in overflow_issues[0].message
+    assert overflow_issues[0].severity is IssueSeverity.WARN
+
+
+def test_verify_resume_no_overflow_issue_when_pdf_under_target(
+    tmp_path: Path,
+) -> None:
+    pdf = tmp_path / "resume.pdf"
+    _write_pdf(pdf, pages=3)
+
+    llm = FakeLLMClient(default_response=json.dumps(_PASSED_PAYLOAD))
+    result = verify_resume(_jd(), _tailored(), llm, pdf_path=pdf)
+
+    assert result.status is VerificationStatus.PASSED
+    assert all(i.category != "page_overflow" for i in result.issues)
+
+
+def test_verify_resume_silently_skips_when_pdf_unreadable(
+    tmp_path: Path,
+) -> None:
+    """Corrupted PDF -> page check is silently skipped (no spurious warn)."""
+    pdf = tmp_path / "resume.pdf"
+    pdf.write_bytes(b"not a real pdf")
+
+    llm = FakeLLMClient(default_response=json.dumps(_PASSED_PAYLOAD))
+    result = verify_resume(_jd(), _tailored(), llm, pdf_path=pdf)
+
+    # LLM verifier still passed; no page_overflow issue added because we
+    # couldn't read the file. PASSED stays PASSED.
+    assert result.status is VerificationStatus.PASSED
+
+
+def test_verify_resume_without_pdf_path_skips_length_check() -> None:
+    """Backwards-compat: callers that don't pass ``pdf_path`` get the same
+    behaviour as before (LLM verifier only, no programmatic check)."""
+    llm = FakeLLMClient(default_response=json.dumps(_PASSED_PAYLOAD))
+    result = verify_resume(_jd(), _tailored(), llm)
+    assert result.status is VerificationStatus.PASSED
+    assert all(i.category != "page_overflow" for i in result.issues)

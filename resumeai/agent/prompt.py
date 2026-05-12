@@ -103,6 +103,13 @@ Hard rules:
 - Use ONLY facts present in CANDIDATE CONTEXT or UPLOADED CONTEXT FILES.
   Never invent companies, titles, dates, technologies, achievements, or
   metrics.
+- TARGET 3 PAGES MAX. The rendered PDF should fit on 3 pages. If the
+  candidate has many engagements + projects, KEEP THE STRUCTURE (no
+  dropping engagements) but trim bullet COUNT per entry: 4-7 for the
+  primary anchor engagement (Premium Valet here), 2-3 for short
+  consulting placements (≤6 months), 4-6 for scan-backed personal
+  projects, 5-7 key achievements. A 4-page render is a sign you've
+  over-listed; cut bullets, not entries.
 - Bullets may be REPHRASED to use the JD's vocabulary, but the underlying
   achievement must come from a source bullet, role summary, or uploaded
   file.
