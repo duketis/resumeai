@@ -6,7 +6,7 @@ The user's master document is never written to: every tailoring run produces
 a fresh copy.
 
 Public surface is intentionally minimal at the package level; consumers should
-import from submodules (``resumeai.docs``, ``resumeai.jd``, ``resumeai.api``)
+import from submodules (``resumeai.docs``, ``tailor_core.jd``, ``resumeai.api``)
 rather than re-exporting through here.
 """
 

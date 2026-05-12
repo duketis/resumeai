@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tailor_core.jd.models import (
+    EmploymentType,
+    JobRequirements,
+    RemoteType,
+    RoleType,
+    Seniority,
+)
+
 from resumeai.agent.prompt import SYSTEM_PROMPT, build_user_prompt
 from resumeai.context.models import (
     Contact,
@@ -11,13 +19,6 @@ from resumeai.context.models import (
     ResumeBase,
     UserContext,
     WorkHistoryEntry,
-)
-from resumeai.jd.models import (
-    EmploymentType,
-    JobRequirements,
-    RemoteType,
-    RoleType,
-    Seniority,
 )
 
 if TYPE_CHECKING:

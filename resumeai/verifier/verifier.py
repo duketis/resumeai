@@ -34,10 +34,10 @@ from resumeai.verifier.models import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from tailor_core.jd.models import JobRequirements
     from tailor_core.llm.client import LLMClient
 
     from resumeai.agent.models import TailoredResume
-    from resumeai.jd.models import JobRequirements
 
 
 SYSTEM_PROMPT = """\

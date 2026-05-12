@@ -1,6 +1,6 @@
 """The tailoring agent.
 
-Given a :class:`~resumeai.jd.models.JobRequirements` and a
+Given a :class:`~tailor_core.jd.models.JobRequirements` and a
 :class:`~resumeai.context.models.UserContext`, produces a
 :class:`~resumeai.agent.models.TailoredResume` — the structured payload the
 Phase 5 renderer will paste into a fresh copy of the user's master Google

@@ -11,6 +11,13 @@ import json
 from typing import Any
 
 import pytest
+from tailor_core.jd.models import (
+    EmploymentType,
+    JobRequirements,
+    RemoteType,
+    RoleType,
+    Seniority,
+)
 
 from resumeai.context.models import (
     Contact,
@@ -21,13 +28,6 @@ from resumeai.context.models import (
     ResumeBase,
     UserContext,
     WorkHistoryEntry,
-)
-from resumeai.jd.models import (
-    EmploymentType,
-    JobRequirements,
-    RemoteType,
-    RoleType,
-    Seniority,
 )
 
 

@@ -7,9 +7,9 @@ from enum import StrEnum
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from tailor_core.jd.models import JobRequirements
 
 from resumeai.agent.models import TailoredResume
-from resumeai.jd.models import JobRequirements
 from resumeai.renderer.models import RenderResult
 from resumeai.verifier.models import VerificationResult
 

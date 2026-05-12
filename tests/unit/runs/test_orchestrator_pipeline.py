@@ -16,11 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
-from tailor_core.llm.client import FakeLLMClient
-
-from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
-from resumeai.context.models import Contact, UserContext
-from resumeai.jd.models import (
+from tailor_core.jd.models import (
     EmploymentType,
     FetchedJD,
     JobRequirements,
@@ -28,6 +24,10 @@ from resumeai.jd.models import (
     RoleType,
     Seniority,
 )
+from tailor_core.llm.client import FakeLLMClient
+
+from resumeai.agent.models import TailoredBullet, TailoredResume, TailoredWorkEntry
+from resumeai.context.models import Contact, UserContext
 from resumeai.renderer.models import RenderResult
 from resumeai.runs import orchestrator as orch_mod
 from resumeai.runs.models import RunStatus, TailorRequest

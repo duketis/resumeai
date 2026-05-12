@@ -8,14 +8,14 @@ file pins behaviour for module-level utilities (filename slugging, currently).
 from __future__ import annotations
 
 import pytest
-
-from resumeai.jd.models import (
+from tailor_core.jd.models import (
     EmploymentType,
     JobRequirements,
     RemoteType,
     RoleType,
     Seniority,
 )
+
 from resumeai.runs.orchestrator import _resume_filename_stem, _sanitize_for_filename
 
 

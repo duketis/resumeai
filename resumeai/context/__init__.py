@@ -1,6 +1,6 @@
 """User context — the "everything Jonathan has ever done" side of tailoring.
 
-The Phase 4 tailoring agent matches a :class:`~resumeai.jd.models.JobRequirements`
+The Phase 4 tailoring agent matches a :class:`~tailor_core.jd.models.JobRequirements`
 against a :class:`~resumeai.context.models.UserContext` produced by the
 :class:`~resumeai.context.store.ContextStore`. This package is the loader +
 storage layer for the latter.
