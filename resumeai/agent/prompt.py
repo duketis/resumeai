@@ -429,6 +429,16 @@ def _format_project(project: ProjectEntry) -> list[str]:
         lines.append("```")
         lines.append(project.body)
         lines.append("```")
+    if project.scanned:
+        lines.append("")
+        lines.append(
+            "**Local folder scan** (README + structure + git log from the "
+            "project's actual codebase -- mine this for richer bullet "
+            "material than the hand-written body alone):"
+        )
+        lines.append("```")
+        lines.append(project.scanned)
+        lines.append("```")
     return lines
 
 

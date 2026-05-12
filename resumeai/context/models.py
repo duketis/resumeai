@@ -101,6 +101,10 @@ class ProjectEntry(BaseModel):
     The ``body`` is preserved so the agent can read the candidate's
     positioning rules (e.g. "never link strategyminer.xyz") verbatim
     when deciding how to render the project's right-column.
+
+    ``local_path`` (optional) points the loader at the project's local
+    folder so a recursive scanner can pull README + structure + git log
+    into ``scanned`` -- richer agent context than the .md alone.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -113,6 +117,8 @@ class ProjectEntry(BaseModel):
     summary: str = ""
     bullets: tuple[str, ...] = ()
     body: str = ""
+    local_path: str | None = None
+    scanned: str = ""
 
 
 class UserContext(BaseModel):

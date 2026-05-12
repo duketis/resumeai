@@ -356,6 +356,28 @@ def test_user_prompt_omits_authoritative_refs_when_unset() -> None:
     assert "Reference resumes (KNOWN-GOOD" not in prompt
 
 
+def test_user_prompt_surfaces_local_folder_scan_when_set() -> None:
+    """When a ProjectEntry has ``scanned`` content (from the recursive
+    folder scanner), it lands in the user prompt under a dedicated
+    ``Local folder scan`` block so the agent can mine it for richer
+    bullet material than the hand-written .md body alone."""
+    from resumeai.context.models import ProjectEntry  # noqa: PLC0415
+
+    context = UserContext(
+        projects=(
+            ProjectEntry(
+                slug="x",
+                name="X",
+                local_path="x",
+                scanned="PROJECT: X\nPATH: /tmp/x\n\nREADME:\nDoes the thing.\n",
+            ),
+        )
+    )
+    prompt = build_user_prompt(JobRequirements(title="Eng"), context)
+    assert "Local folder scan" in prompt
+    assert "Does the thing." in prompt
+
+
 def test_user_prompt_renders_minimal_project_entry() -> None:
     """Projects with only name + slug still render -- every optional field
     branch in ``_format_project`` is covered by this and the sample-context

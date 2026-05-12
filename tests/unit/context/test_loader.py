@@ -338,6 +338,48 @@ def test_projects_tolerate_missing_optional_metadata(tmp_path: Path) -> None:
     assert project.url is None
     assert project.status is None
     assert project.stack is None
+    assert project.local_path is None
+    assert project.scanned == ""
+
+
+def test_project_with_local_path_scans_the_referenced_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When ``local_path`` is set, the loader runs the recursive scanner
+    against ``RESUMEAI_PROJECTS_ROOT / local_path`` and stores the output
+    on ``ProjectEntry.scanned``."""
+    # Stage a fake "projects root" with one project inside it.
+    projects_root = tmp_path / "host-personal"
+    project_dir = projects_root / "fake-project"
+    project_dir.mkdir(parents=True)
+    (project_dir / "README.md").write_text("# Fake Project\n\nDoes a thing.\n")
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", str(projects_root))
+
+    # And the resumeai UserContext side.
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "fake.md").write_text(
+        "---\nproject: Fake\nlocal_path: fake-project\n---\n\nhand-written summary\n"
+    )
+
+    ctx = load_user_context(tmp_path)
+    project = ctx.projects[0]
+    assert project.local_path == "fake-project"
+    assert "Fake Project" in project.scanned
+    assert "Does a thing." in project.scanned
+
+
+def test_project_local_path_pointing_to_missing_folder_degrades_to_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A misconfigured ``local_path`` doesn't take down the whole context
+    load -- it just yields an empty ``scanned`` and a logged warning."""
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", str(tmp_path / "missing-root"))
+    pr = tmp_path / "projects"
+    pr.mkdir()
+    (pr / "fake.md").write_text("---\nproject: Fake\nlocal_path: nope\n---\n\nbody\n")
+    ctx = load_user_context(tmp_path)
+    assert ctx.projects[0].scanned == ""
 
 
 # -- master resume + reference resumes --------------------------------------

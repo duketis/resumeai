@@ -16,6 +16,10 @@ services:
       # auth source -- no keychain, no OAuth refresh, no expiry. Same Max
       # subscription as the host. Mirrors the algo/dashboard pattern.
       - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      # Root the loader's project-folder scanner against the mounted
+      # host directory below. ``local_path`` values in
+      # ``UserContext/projects/<slug>.md`` resolve relative to this.
+      - RESUMEAI_PROJECTS_ROOT=/host/personal
     volumes:
       # Per-run rendered outputs on the host. The orchestrator + the
       # /runs/<id>/pdf route both resolve ``runs/<run_id>/...`` relative
@@ -31,3 +35,8 @@ services:
       # uploads. Bind-mounting the host's ``~/.resumeai/`` so the container
       # shares the SAME database the user already has on their Mac.
       - ${HOME}/.resumeai:/root/.resumeai
+      # The user's personal projects (jobai, algo/Strategy Miner, ...).
+      # The loader's recursive scanner reads from here when a project's
+      # ``.md`` frontmatter sets ``local_path: <relative-folder>``.
+      # Read-only -- nothing in resumeai writes to your other repos.
+      - ${HOME}/Documents/personal:/host/personal:ro

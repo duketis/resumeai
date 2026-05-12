@@ -12,6 +12,10 @@ Markdown files use YAML frontmatter for structured metadata + a markdown
 body for narrative content. Bullets are extracted from the body where
 relevant.
 
+Projects with a ``local_path:`` frontmatter field also get a recursive
+scan of the referenced folder (README, structure, git log) attached so
+the agent has the full project context, not just the hand-written .md.
+
 Missing files / directories are tolerated — a fresh user starts with an
 empty context and fills it in over time. Malformed YAML / frontmatter
 raises :class:`ContextLoadError` with a path so the user knows what to fix.
@@ -19,6 +23,8 @@ raises :class:`ContextLoadError` with a path so the user knows what to fix.
 
 from __future__ import annotations
 
+import logging
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -34,6 +40,15 @@ from resumeai.context.models import (
     UserContext,
     WorkHistoryEntry,
 )
+from resumeai.local_projects.scanner import ScanError, scan_project
+
+_log = logging.getLogger(__name__)
+
+# Where ``local_path`` values in projects/*.md are resolved relative to.
+# Defaults to ``~/Documents/personal/`` on host; the Docker container
+# overrides this via ``RESUMEAI_PROJECTS_ROOT=/host/personal``.
+PROJECTS_ROOT_ENV = "RESUMEAI_PROJECTS_ROOT"
+DEFAULT_PROJECTS_ROOT = Path("~/Documents/personal").expanduser()
 
 
 class ContextLoadError(RuntimeError):
@@ -176,8 +191,11 @@ def _load_reference_resumes(root: Path) -> list[str]:
 
 def _load_projects(directory: Path) -> list[ProjectEntry]:
     entries: list[ProjectEntry] = []
+    projects_root = Path(os.environ.get(PROJECTS_ROOT_ENV, str(DEFAULT_PROJECTS_ROOT))).expanduser()
     for path in _markdown_files(directory):
         fm, body = _parse_frontmatter(path)
+        local_path = _optional_str(fm, "local_path")
+        scanned = _scan_local_path(local_path, projects_root, path) if local_path else ""
         entries.append(
             ProjectEntry(
                 slug=path.stem,
@@ -188,10 +206,35 @@ def _load_projects(directory: Path) -> list[ProjectEntry]:
                 summary=_extract_summary(body),
                 bullets=tuple(_BULLET_RE.findall(body)),
                 body=body.strip(),
+                local_path=local_path,
+                scanned=scanned,
             )
         )
     entries.sort(key=lambda e: e.slug)
     return entries
+
+
+def _scan_local_path(local_path: str, projects_root: Path, md_path: Path) -> str:
+    """Recursively scan the project's local folder. Tolerant of missing paths.
+
+    Scan failures (folder absent, git unavailable, permission denied) are
+    logged at WARNING and degrade to an empty string so a misconfigured
+    ``local_path`` doesn't take down the entire context load.
+    """
+    target = (projects_root / local_path).expanduser()
+    if not target.is_dir():
+        _log.warning(
+            "%s: local_path %r resolves to %s which is not a directory; skipping scan",
+            md_path,
+            local_path,
+            target,
+        )
+        return ""
+    try:
+        return scan_project(target)
+    except (ScanError, OSError) as exc:
+        _log.warning("%s: failed to scan %s: %s", md_path, target, exc)
+        return ""
 
 
 # -- helpers -----------------------------------------------------------------
