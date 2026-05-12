@@ -40,6 +40,8 @@ dependencies = [
   "python-multipart>=0.0.9",
   "itsdangerous>=2.1",
   "pypdf>=4.0",
+  "pypdfium2>=4.30",
+  "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
@@ -168,6 +170,12 @@ show_error_codes = true
 pretty = true
 files = ["resumeai", "tests"]
 exclude = ["_private/", "UserContext/", "build/", "dist/"]
+
+# Third-party libs without py.typed markers / stubs. Their public
+# surface is small enough that ignoring missing imports is fine.
+[[tool.mypy.overrides]]
+module = ["pypdfium2", "pypdfium2.*", "anthropic", "anthropic.*"]
+ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
 # pytest — testing

@@ -34,6 +34,7 @@ from resumeai.verifier.verifier import (
     fallback_concerns_result,
     verify_resume,
 )
+from resumeai.verifier.vision import verify_pdf_visually
 
 if TYPE_CHECKING:
     from resumeai.agent.models import TailoredResume
@@ -205,6 +206,14 @@ class TailoringOrchestrator:
             self._verify_safely, requirements, tailored, rendered_pdf_path
         )
         update_run(self._runs, run_id, verification=verification)
+
+        # Step 6b: visual QC. Best-effort -- returns None when the
+        # token / SDK / API isn't available. The run still succeeds
+        # without it; only the run-detail page's "Visual verification"
+        # card is empty.
+        vision_verification = await asyncio.to_thread(verify_pdf_visually, rendered_pdf_path)
+        if vision_verification is not None:
+            update_run(self._runs, run_id, vision_verification=vision_verification)
 
         # Done.
         finished = update_run(

@@ -83,3 +83,8 @@ class Run(BaseModel):
     tailored: TailoredResume | None = None
     result: RenderResult | None = None
     verification: VerificationResult | None = None
+    # Vision-based QC on the rendered PDF. Optional because the vision
+    # pass is best-effort -- missing OAuth token, SDK install issue, or
+    # API failure all degrade silently to ``None`` (the text verifier
+    # still runs).
+    vision_verification: VerificationResult | None = None

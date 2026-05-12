@@ -143,6 +143,7 @@ def update_run(
     tailored: object | None = None,
     result: object | None = None,
     verification: object | None = None,
+    vision_verification: object | None = None,
 ) -> Run:
     """Mutate a stored run by replacing fields the caller supplied.
 
@@ -168,6 +169,8 @@ def update_run(
         updates["result"] = result
     if verification is not None:
         updates["verification"] = verification
+    if vision_verification is not None:
+        updates["vision_verification"] = vision_verification
 
     new_run = current.model_copy(update=updates)
     store.save(new_run)

@@ -33,5 +33,9 @@
 {% endmacro %}
 
 {% if run.verification %}
-  {{ verification_card("Verification", run.verification) }}
+  {{ verification_card("Verification (content)", run.verification) }}
+{% endif %}
+
+{% if run.vision_verification %}
+  {{ verification_card("Visual verification (rendered PDF layout)", run.vision_verification) }}
 {% endif %}
