@@ -35,6 +35,15 @@
 \raggedright
 \setlength{\tabcolsep}{0in}
 
+% Refuse to break a paragraph across pages with a single dangling line.
+% Default ``\widowpenalty=150`` lets LaTeX strand the last line of a
+% bullet at the top of the next page (e.g. "references into Sanity."
+% alone on page 3 after the rest of the bullet ended page 2). Cranking
+% to 10000 forces LaTeX to choose a different break point or pull the
+% whole paragraph forward / back together.
+\widowpenalty=10000
+\clubpenalty=10000
+
 % Section headings need to read as TITLES, not as label text -- previous
 % ``\scshape\large`` was the same visual weight as ``\textbf{employer}``
 % inside entries, so PROFILE and ``Swinburne University`` looked equivalent.
