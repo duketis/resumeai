@@ -1,0 +1,27 @@
+{% if run.requirements %}
+<h2>Extracted requirements</h2>
+<p style="color: var(--muted); margin-top: -0.4em;">This card is a summary. The tailoring agent receives the structured fields below <em>plus</em> the full raw JD text — nothing extracted here is dropped, and nothing in the original JD is hidden from it.</p>
+<div class="card">
+  <p><strong>{{ run.requirements.title }}</strong>{% if run.requirements.company %} @ {{ run.requirements.company }}{% endif %}</p>
+  {% if run.requirements.location %}<p>Location: {{ run.requirements.location }}</p>{% endif %}
+  <p>Role: {{ run.requirements.role_type.value }} · Seniority: {{ run.requirements.seniority.value }} · Employment: {{ run.requirements.employment_type.value }} · Remote: {{ run.requirements.remote_type.value }}</p>
+  {% if run.requirements.required_skills %}
+    <p><strong>Required skills:</strong> {{ run.requirements.required_skills | join(', ') }}</p>
+  {% endif %}
+  {% if run.requirements.nice_to_have_skills %}
+    <p><strong>Nice-to-have skills:</strong> {{ run.requirements.nice_to_have_skills | join(', ') }}</p>
+  {% endif %}
+  {% if run.requirements.must_haves %}
+    <p><strong>Must-haves:</strong> {{ run.requirements.must_haves | join(', ') }}</p>
+  {% endif %}
+  {% if run.requirements.employer_vocabulary %}
+    <p><strong>Employer vocabulary</strong> (the agent echoes these where natural): {{ run.requirements.employer_vocabulary | join(', ') }}</p>
+  {% endif %}
+  {% if run.requirements.raw_text %}
+    <details style="margin-top: 0.6em;">
+      <summary>Raw JD text sent to the agent ({{ run.requirements.raw_text | length }} chars)</summary>
+      <pre style="white-space: pre-wrap; max-height: 320px; overflow-y: auto; background: white; padding: 0.6em; border: 1px solid var(--border); border-radius: 4px; margin-top: 0.4em;">{{ run.requirements.raw_text }}</pre>
+    </details>
+  {% endif %}
+</div>
+{% endif %}

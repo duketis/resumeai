@@ -7,110 +7,28 @@
 
 <h2>Run <code>{{ run.id }}</code></h2>
 
-<div class="card">
-  <p>
-    <strong>Status:</strong>
-    {% if run.status.value == 'succeeded' %}
-      <span class="status-good">{{ run.status.value }}</span>
-    {% elif run.status.value == 'failed' %}
-      <span class="status-warn">{{ run.status.value }}</span>
-    {% else %}
-      <span>{{ run.status.value }}</span> <em style="color: var(--muted);">(refreshes every 2s)</em>
-    {% endif %}
-  </p>
-  {% if run.detail %}<p><strong>Detail:</strong> {{ run.detail }}</p>{% endif %}
-  {% if run.error %}<p class="status-warn"><strong>Error:</strong> <code>{{ run.error }}</code></p>{% endif %}
-  <p style="color: var(--muted); font-size: 0.9em;">
-    Created {{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC ·
-    Updated {{ run.updated_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
-  </p>
-</div>
+{% include "_partials/run_status.html" %}
 
 <h2>Request</h2>
 <div class="card">
-  {% if run.request.jd_url %}<p><strong>JD URL:</strong> <a href="{{ run.request.jd_url }}" target="_blank" rel="noopener">{{ run.request.jd_url }}</a></p>{% endif %}
-  {% if run.request.jd_text %}<p><strong>JD text:</strong></p><pre style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ run.request.jd_text }}</pre>{% endif %}
-</div>
-
-{% if run.requirements %}
-<h2>Extracted requirements</h2>
-<div class="card">
-  <p><strong>{{ run.requirements.title }}</strong>{% if run.requirements.company %} @ {{ run.requirements.company }}{% endif %}</p>
-  {% if run.requirements.location %}<p>Location: {{ run.requirements.location }}</p>{% endif %}
-  <p>Role: {{ run.requirements.role_type.value }} · Seniority: {{ run.requirements.seniority.value }} · Remote: {{ run.requirements.remote_type.value }}</p>
-  {% if run.requirements.required_skills %}
-    <p><strong>Required:</strong> {{ run.requirements.required_skills | join(', ') }}</p>
+  {% if run.request.jd_url %}
+    <p><strong>JD URL:</strong>
+      <a href="{{ run.request.jd_url }}" target="_blank" rel="noopener">{{ run.request.jd_url }}</a>
+    </p>
   {% endif %}
-  {% if run.requirements.must_haves %}
-    <p><strong>Must-haves:</strong> {{ run.requirements.must_haves | join(', ') }}</p>
+  {% if run.request.jd_text %}
+    <details>
+      <summary>JD text ({{ run.request.jd_text | length }} chars)</summary>
+      <pre style="white-space: pre-wrap; max-height: 320px; overflow-y: auto; margin-top: 0.4em;">{{ run.request.jd_text }}</pre>
+    </details>
   {% endif %}
 </div>
-{% endif %}
 
-{% if run.result %}
-<h2>Result</h2>
-<div class="card">
-  <p><strong>Tailored PDF:</strong>
-    <a class="button" href="/runs/{{ run.id }}/pdf" target="_blank" rel="noopener">Open PDF</a>
-    <span class="muted">({{ run.result.pdf_size_bytes }} bytes)</span>
-  </p>
-  <h3>Section diffs</h3>
-  <ul>
-    {% for diff in run.result.diffs %}
-      <li>
-        <strong>{{ diff.kind }}</strong>:
-        {% if diff.status.value == 'replaced' %}
-          replaced ({{ diff.before_chars }} → {{ diff.after_chars }} chars)
-        {% else %}
-          {{ diff.status.value }}
-        {% endif %}
-        {% if diff.heading %} — heading <code>{{ diff.heading }}</code>{% endif %}
-      </li>
-    {% endfor %}
-  </ul>
-</div>
+{% include "_partials/run_requirements.html" %}
 
-{% if run.tailored %}
-<h2>Tailoring rationale</h2>
-<div class="card">
-  <p>{{ run.tailored.rationale }}</p>
-</div>
-{% endif %}
-{% endif %}
+{% include "_partials/run_result.html" %}
 
-{% if run.verification %}
-<h2>Verification</h2>
-<div class="card">
-  <p>
-    <strong>Status:</strong>
-    {% if run.verification.status.value == 'passed' %}
-      <span class="status-good">passed</span>
-    {% elif run.verification.status.value == 'concerns' %}
-      <span class="status-warn">concerns</span>
-    {% else %}
-      <span class="status-warn">failed</span>
-    {% endif %}
-  </p>
-  {% if run.verification.summary %}<p>{{ run.verification.summary }}</p>{% endif %}
-  {% if run.verification.issues %}
-    <h3 style="margin-top: 1em;">Issues ({{ run.verification.issues | length }})</h3>
-    <ul>
-      {% for issue in run.verification.issues %}
-        <li>
-          <strong>[{{ issue.severity.value | upper }}]</strong>
-          <code>{{ issue.category }}</code> — {{ issue.message }}
-          {% if issue.suggestion %}<br><em>Suggestion:</em> {{ issue.suggestion }}{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p><em>No issues raised.</em></p>
-  {% endif %}
-  {% if run.verification.rationale %}
-    <p style="color: var(--muted); margin-top: 1em;">{{ run.verification.rationale }}</p>
-  {% endif %}
-</div>
-{% endif %}
+{% include "_partials/run_verifications.html" %}
 
 <p>
   <a class="button secondary" href="/runs">← All runs</a>

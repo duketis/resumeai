@@ -1,0 +1,18 @@
+<div class="card">
+  <p>
+    <strong>Status:</strong>
+    {% if run.status.value == 'succeeded' %}
+      <span class="status-good">{{ run.status.value }}</span>
+    {% elif run.status.value == 'failed' %}
+      <span class="status-warn">{{ run.status.value }}</span>
+    {% else %}
+      <span>{{ run.status.value }}</span> <em style="color: var(--muted);">(live)</em>
+    {% endif %}
+  </p>
+  {% if run.detail %}<p><strong>Detail:</strong> {{ run.detail }}</p>{% endif %}
+  {% if run.error %}<p class="status-warn"><strong>Error:</strong> <code>{{ run.error }}</code></p>{% endif %}
+  <p style="color: var(--muted); font-size: 0.9em;">
+    Created {{ run.created_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC ·
+    Updated {{ run.updated_at.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+  </p>
+</div>

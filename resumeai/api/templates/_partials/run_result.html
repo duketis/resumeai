@@ -1,0 +1,32 @@
+{% if run.result %}
+<h2>Result</h2>
+<div class="card">
+  <p><strong>Tailored PDF:</strong>
+    <a class="button" href="/runs/{{ run.id }}/pdf" target="_blank" rel="noopener">Open PDF</a>
+    <span class="muted">({{ run.result.pdf_size_bytes }} bytes)</span>
+  </p>
+  <details>
+    <summary>Section diffs ({{ run.result.diffs | length }})</summary>
+    <ul>
+      {% for diff in run.result.diffs %}
+        <li>
+          <strong>{{ diff.kind }}</strong>:
+          {% if diff.status.value == 'replaced' %}
+            replaced
+          {% else %}
+            {{ diff.status.value }}
+          {% endif %}
+          {% if diff.heading %} — heading <code>{{ diff.heading }}</code>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+</div>
+
+{% if run.tailored %}
+<h2>Tailoring rationale</h2>
+<div class="card">
+  <p>{{ run.tailored.rationale }}</p>
+</div>
+{% endif %}
+{% endif %}

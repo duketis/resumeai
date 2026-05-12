@@ -1,0 +1,37 @@
+{% macro verification_card(title, verification) %}
+<h2>{{ title }}</h2>
+<div class="card">
+  <p>
+    <strong>Status:</strong>
+    {% if verification.status.value == 'passed' %}
+      <span class="status-good">passed</span>
+    {% elif verification.status.value == 'concerns' %}
+      <span class="status-warn">concerns</span>
+    {% else %}
+      <span class="status-warn">failed</span>
+    {% endif %}
+  </p>
+  {% if verification.summary %}<p>{{ verification.summary }}</p>{% endif %}
+  {% if verification.issues %}
+    <h3 style="margin-top: 1em;">Issues ({{ verification.issues | length }})</h3>
+    <ul>
+      {% for issue in verification.issues %}
+        <li>
+          <strong>[{{ issue.severity.value | upper }}]</strong>
+          <code>{{ issue.category }}</code> — {{ issue.message }}
+          {% if issue.suggestion %}<br><em>Suggestion:</em> {{ issue.suggestion }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p><em>No issues raised.</em></p>
+  {% endif %}
+  {% if verification.rationale %}
+    <p style="color: var(--muted); margin-top: 1em;">{{ verification.rationale }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
+{% if run.verification %}
+  {{ verification_card("Verification", run.verification) }}
+{% endif %}
