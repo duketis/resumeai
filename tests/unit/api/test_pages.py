@@ -171,28 +171,37 @@ def test_settings_page_renders(client: TestClient) -> None:
     assert "default.tex.j2" in response.text
 
 
-def test_rerun_creates_new_run_with_same_request_and_redirects(
+def test_rerun_resets_existing_run_in_place_and_redirects(
     client: TestClient,
     runs: InMemoryRunsStore,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``POST /runs/<id>/rerun`` clones the original ``TailorRequest`` into
-    a new run and 303s to the new run-detail page."""
+    """``POST /runs/<id>/rerun`` mutates the SAME run id, doesn't clone.
+
+    Stale fields (error, tailored, result, verification) are wiped so the
+    user sees a fresh in-flight pipeline instead of leftover state from
+    the previous run.
+    """
+    from resumeai.agent.models import TailoredResume  # noqa: PLC0415
+    from resumeai.context.models import Contact  # noqa: PLC0415
+
     when = datetime(2026, 5, 11, tzinfo=UTC)
     runs.save(
         Run(
             id="run_orig",
             request=TailorRequest(jd_url="https://example.com/job/42"),
-            status=RunStatus.SUCCEEDED,
+            status=RunStatus.FAILED,
+            error="some prior failure",
+            tailored=TailoredResume(name="Stale", contact=Contact(email="x@y.co")),
             created_at=when,
             updated_at=when,
         )
     )
 
     async def fake_execute(self: object, run_id: str) -> Run:
-        return Run(
+        return runs.get(run_id) or Run(
             id=run_id,
-            request=TailorRequest(jd_url="https://example.com/job/42"),
+            request=TailorRequest(jd_text="x"),
             status=RunStatus.SUCCEEDED,
             created_at=when,
             updated_at=when,
@@ -205,13 +214,17 @@ def test_rerun_creates_new_run_with_same_request_and_redirects(
 
     response = client.post("/runs/run_orig/rerun", follow_redirects=False)
     assert response.status_code == 303
-    location = response.headers["location"]
-    assert location.startswith("/runs/run_")
-    new_id = location.removeprefix("/runs/")
-    assert new_id != "run_orig"
-    new_run = runs.get(new_id)
-    assert new_run is not None
-    assert new_run.request.jd_url == "https://example.com/job/42"
+    assert response.headers["location"] == "/runs/run_orig"
+
+    # Same record, fresh state. No second row was created.
+    assert len(runs.list_recent()) == 1
+    reset = runs.get("run_orig")
+    assert reset is not None
+    assert reset.status == RunStatus.PENDING
+    assert reset.error is None
+    assert reset.tailored is None
+    # Original request is preserved verbatim.
+    assert reset.request.jd_url == "https://example.com/job/42"
 
 
 def test_rerun_404_when_original_run_unknown(client: TestClient) -> None:

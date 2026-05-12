@@ -105,20 +105,35 @@ async def rerun(
     runs: RunsStore = Depends(get_runs_store),
     orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
 ) -> RedirectResponse:
-    """Kick off a new run with the same ``TailorRequest`` as ``run_id``.
+    """Re-execute the same run id against the same ``TailorRequest``.
 
-    Useful when a previous render was lost (e.g. PDFs wiped during a
-    Docker volume reshuffle) or when the candidate's context has been
-    updated since the original run and we want to see the difference.
+    Mutates the existing record in place rather than cloning -- "re-run
+    THIS run", not "make a copy". State (status / detail / error /
+    requirements / tailored / result / verification) is reset so the
+    UI shows a fresh in-flight pipeline instead of stale fields.
     """
+    from datetime import UTC, datetime  # noqa: PLC0415
+
     original = runs.get(run_id)
     if original is None:
         raise HTTPException(status_code=404, detail=f"unknown run {run_id!r}")
-    new_run = orchestrator.create_run(original.request)
-    task: asyncio.Task[object] = asyncio.create_task(orchestrator.execute(new_run.id))
+    reset = original.model_copy(
+        update={
+            "status": RunStatus.PENDING,
+            "detail": "",
+            "error": None,
+            "requirements": None,
+            "tailored": None,
+            "result": None,
+            "verification": None,
+            "updated_at": datetime.now(UTC),
+        }
+    )
+    runs.save(reset)
+    task: asyncio.Task[object] = asyncio.create_task(orchestrator.execute(run_id))
     _BACKGROUND_TASKS.add(task)
     task.add_done_callback(_BACKGROUND_TASKS.discard)
-    return RedirectResponse(f"/runs/{new_run.id}", status_code=303)
+    return RedirectResponse(f"/runs/{run_id}", status_code=303)
 
 
 @router.get("/runs/{run_id}", response_class=HTMLResponse)
