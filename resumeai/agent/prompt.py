@@ -38,7 +38,7 @@ no preamble) matching this exact schema:
 
 {
   "name": "string — the candidate's name, copied verbatim",
-  "headline": "positioning sentence ≤15 words; experience + sectors; no slashes; no '+' symbols",
+  "headline": "VERBATIM passthrough of candidate's resume-base Headline; empty if absent; never rewrite",
   "contact": {
     "email": "string — copied verbatim",
     "phone": "string or null — passthrough",
@@ -139,16 +139,15 @@ Hard rules:
   client list is. If the candidate has worked at zero government clients,
   never use the word "government" in headline / summary / key_achievements.
 
-Headline shape:
-- The headline positions the candidate's experience + sector mix in a
-  normal sentence. Examples that work: "Full-stack engineer with five
-  years' consulting delivery across healthcare, finance and media",
-  "Senior backend engineer focused on AWS-native data platforms",
-  "Engineer-consultant with five years anchoring multi-tenant Rails
-  apps". Examples that DO NOT work: "TypeScript/React + Python on
-  AWS", "Python | FastAPI | React | AWS", "Full-stack — Python,
-  React, AWS". Never emit a slash-separated tech-stack list. Never
-  use "+" between techs. Techs live in the Skills section.
+Headline rule:
+- The ``headline`` field is a VERBATIM PASSTHROUGH from the candidate's
+  resume base, not something you generate. If the resume base sets
+  ``Headline: Full-stack Engineer``, your output is ``"headline":
+  "Full-stack Engineer"`` -- no expansion, no tech-stack list, no
+  sector add-on, no JD-echo. The candidate sets this once and it
+  shouldn't change between runs.
+- If the candidate's resume base has no Headline field, emit
+  ``"headline": ""`` -- do NOT invent one.
 - 4-7 bullets per work_history entry, descending importance.
 - Each bullet ≤25 words, action verb first, quantified where the source
   supports it.
