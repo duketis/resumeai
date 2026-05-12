@@ -38,7 +38,7 @@ no preamble) matching this exact schema:
 
 {
   "name": "string — the candidate's name, copied verbatim",
-  "headline": "VERBATIM passthrough of candidate's resume-base Headline; empty if absent; never rewrite",
+  "headline": "verbatim passthrough of resume-base Headline; never rewrite",
   "contact": {
     "email": "string — copied verbatim",
     "phone": "string or null — passthrough",
