@@ -3,8 +3,11 @@
 What the scanner returns (in order):
 
 1. **PROJECT** — name + absolute path.
-2. **README** — first ``README.md`` / ``README.rst`` / ``README.txt`` it
-   finds at the top level, truncated to ``readme_max_chars``.
+2. **DOCS** — every README / CLAUDE.md / PLAN_*.md / ARCHITECTURE*.md /
+   DESIGN*.md found within ``docs_max_depth`` levels, each truncated
+   individually to ``per_doc_max_chars`` so a giant top-level README
+   can't crowd out a per-service one. Total doc content capped at
+   ``docs_total_max_chars`` so a monorepo doesn't blow up the prompt.
 3. **STRUCTURE** — non-secret top-level files and immediate subdirs
    (skipping the privacy-sensitive list).
 4. **GIT LOG** — when ``.git/`` is present and ``git`` is on PATH, runs
@@ -18,6 +21,7 @@ so a single broken scan never blocks the whole context payload.
 
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from collections import Counter
@@ -27,6 +31,9 @@ from pathlib import Path
 DEFAULT_README_MAX_CHARS = 8000
 DEFAULT_GIT_MAX_CHARS = 12000
 DEFAULT_GIT_MAX_COMMITS = 1000
+DEFAULT_DOCS_MAX_DEPTH = 2
+DEFAULT_PER_DOC_MAX_CHARS = 3000
+DEFAULT_DOCS_TOTAL_MAX_CHARS = 30000
 
 _README_NAMES: tuple[str, ...] = (
     "README.md",
@@ -74,11 +81,19 @@ def scan_project(
     *,
     name: str | None = None,
     author_email: str | None = None,
-    readme_max_chars: int = DEFAULT_README_MAX_CHARS,
     git_max_chars: int = DEFAULT_GIT_MAX_CHARS,
     git_max_commits: int = DEFAULT_GIT_MAX_COMMITS,
+    docs_max_depth: int = DEFAULT_DOCS_MAX_DEPTH,
+    per_doc_max_chars: int = DEFAULT_PER_DOC_MAX_CHARS,
+    docs_total_max_chars: int = DEFAULT_DOCS_TOTAL_MAX_CHARS,
 ) -> str:
-    """Scan ``path`` and return the assembled plain-text summary."""
+    """Scan ``path`` and return the assembled plain-text summary.
+
+    Recursively pulls README + CLAUDE.md + PLAN_*.md + ARCHITECTURE*.md
+    + DESIGN*.md from up to ``docs_max_depth`` levels deep so monorepos
+    (top-level README + per-service READMEs + plan docs) surface their
+    full architecture surface, not just the README at root.
+    """
     project_path = Path(path).expanduser().resolve()
     if not project_path.is_dir():
         raise ScanError(f"{project_path} is not a directory")
@@ -88,7 +103,12 @@ def scan_project(
         f"PROJECT: {project_name}",
         f"PATH: {project_path}",
         "",
-        _readme_section(project_path, readme_max_chars),
+        _docs_section(
+            project_path,
+            max_depth=docs_max_depth,
+            per_doc_max_chars=per_doc_max_chars,
+            total_max_chars=docs_total_max_chars,
+        ),
         "",
         _structure_section(project_path),
         "",
@@ -97,23 +117,85 @@ def scan_project(
     return "\n".join(parts).strip() + "\n"
 
 
-# -- README -----------------------------------------------------------------
+# -- Docs (recursive) -------------------------------------------------------
 
 
-def _readme_section(project_path: Path, max_chars: int) -> str:
-    for name in _README_NAMES:
-        candidate = project_path / name
-        if candidate.is_file():
-            try:
-                content = candidate.read_text(encoding="utf-8", errors="replace")
-            except OSError as exc:
-                return f"## README ({name})\n_(could not read: {exc})_"
-            if len(content) > max_chars:
-                content = (
-                    content[:max_chars] + f"\n\n…({len(content) - max_chars} more chars truncated)"
-                )
-            return f"## README ({name})\n{content.strip()}"
-    return "## README\n_(no README found at top level)_"
+# Filenames the recursive docs collector treats as project documentation.
+# Case-insensitive match on the filename only (not the full path).
+_DOC_FILENAME_RE = re.compile(
+    r"^(README(\.md|\.rst|\.txt)?|CLAUDE\.md|"
+    r"PLAN[_-].*\.md|ARCHITECTURE.*\.md|DESIGN.*\.md|"
+    r"OVERVIEW.*\.md|ROADMAP.*\.md|CONTRIBUTING\.md)$",
+    re.IGNORECASE,
+)
+
+
+def _docs_section(
+    project_path: Path,
+    *,
+    max_depth: int,
+    per_doc_max_chars: int,
+    total_max_chars: int,
+) -> str:
+    """Collect README + CLAUDE.md + PLAN/ARCHITECTURE/DESIGN docs recursively.
+
+    Each doc truncated individually so a giant top-level README can't
+    crowd out a per-service one; total budget capped so a monorepo with
+    50 READMEs doesn't blow up the LLM prompt.
+    """
+    matches = _find_docs(project_path, max_depth=max_depth)
+    if not matches:
+        return "## DOCS\n_(no README / CLAUDE.md / PLAN_*.md / ARCHITECTURE found)_"
+
+    chunks: list[str] = ["## DOCS"]
+    total_used = 0
+    for doc_path in matches:
+        rel = doc_path.relative_to(project_path)
+        try:
+            content = doc_path.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError as exc:
+            chunks.append(f"### {rel}\n_(could not read: {exc})_")
+            continue
+        if len(content) > per_doc_max_chars:
+            content = (
+                content[:per_doc_max_chars]
+                + f"\n\n…({len(content) - per_doc_max_chars} more chars truncated)"
+            )
+        # Reserve headroom for the next section even if we're near budget.
+        remaining = total_max_chars - total_used
+        if remaining <= 200:
+            chunks.append(
+                f"### …({len(matches) - len(chunks) + 1} more doc(s) skipped — total budget hit)"
+            )
+            break
+        if len(content) > remaining:
+            content = content[:remaining] + "\n\n…(truncated to fit overall scan budget)"
+        chunks.append(f"### {rel}\n{content}")
+        total_used += len(content)
+    return "\n\n".join(chunks)
+
+
+def _find_docs(project_path: Path, *, max_depth: int) -> list[Path]:
+    """Breadth-first walk for doc files, stopping at ``max_depth`` levels."""
+    found: list[Path] = []
+    # (depth, dir) queue.
+    queue: list[tuple[int, Path]] = [(0, project_path)]
+    while queue:
+        depth, current = queue.pop(0)
+        try:
+            children = sorted(current.iterdir(), key=lambda p: p.name.lower())
+        except OSError:
+            continue
+        for child in children:
+            if _should_skip(child):
+                continue
+            if child.is_file() and _DOC_FILENAME_RE.match(child.name):
+                found.append(child)
+            elif child.is_dir() and depth < max_depth:
+                queue.append((depth + 1, child))
+    # Stable order: top-level docs first (depth 0), then subfolder docs.
+    found.sort(key=lambda p: (len(p.relative_to(project_path).parts), str(p).lower()))
+    return found
 
 
 # -- Structure --------------------------------------------------------------

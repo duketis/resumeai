@@ -49,39 +49,87 @@ def test_scan_raises_when_path_is_file(tmp_path: Path) -> None:
         scan_project(file_path)
 
 
-# -- README section --------------------------------------------------------
+# -- DOCS section ----------------------------------------------------------
 
 
-def test_scan_includes_readme_text(tmp_path: Path) -> None:
+def test_scan_includes_top_level_readme(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text("# My Project\n\nSome text.")
     output = scan_project(tmp_path, name="proj")
-    assert "## README (README.md)" in output
+    assert "## DOCS" in output
+    assert "### README.md" in output
     assert "# My Project" in output
 
 
-def test_scan_truncates_long_readme(tmp_path: Path) -> None:
+def test_scan_truncates_long_per_doc(tmp_path: Path) -> None:
     long = "x" * 10000
     (tmp_path / "README.md").write_text(long)
-    output = scan_project(tmp_path, readme_max_chars=500)
+    output = scan_project(tmp_path, per_doc_max_chars=500)
     assert "more chars truncated" in output
 
 
-def test_scan_handles_missing_readme(tmp_path: Path) -> None:
+def test_scan_handles_missing_docs(tmp_path: Path) -> None:
     output = scan_project(tmp_path)
-    assert "no README found at top level" in output
+    assert "no README / CLAUDE.md / PLAN_*.md / ARCHITECTURE" in output
 
 
 def test_scan_falls_back_to_alternative_readme_filenames(tmp_path: Path) -> None:
     (tmp_path / "README.txt").write_text("plaintext readme")
     output = scan_project(tmp_path)
-    assert "## README (README.txt)" in output
+    assert "### README.txt" in output
 
 
-def test_scan_handles_unreadable_readme(tmp_path: Path, mocker: MockerFixture) -> None:
+def test_scan_handles_unreadable_doc(tmp_path: Path, mocker: MockerFixture) -> None:
     (tmp_path / "README.md").write_text("ok")
     mocker.patch.object(Path, "read_text", side_effect=OSError("permission denied"))
     output = scan_project(tmp_path)
     assert "could not read" in output
+
+
+def test_scan_pulls_subfolder_readmes_recursively(tmp_path: Path) -> None:
+    """Monorepo-style projects expose per-service READMEs the agent needs."""
+    (tmp_path / "README.md").write_text("# Top README")
+    (tmp_path / "engine").mkdir()
+    (tmp_path / "engine" / "README.md").write_text("# Engine docs\n\nbacktrader stuff.")
+    (tmp_path / "dashboard").mkdir()
+    (tmp_path / "dashboard" / "CLAUDE.md").write_text("# Dashboard CLAUDE\n\nclaude agent setup.")
+    output = scan_project(tmp_path)
+    assert "### README.md" in output
+    assert "### engine/README.md" in output
+    assert "backtrader stuff" in output
+    assert "### dashboard/CLAUDE.md" in output
+    assert "claude agent setup" in output
+
+
+def test_scan_pulls_plan_and_architecture_docs(tmp_path: Path) -> None:
+    """``PLAN_*.md`` and ``ARCHITECTURE*.md`` are part of the doc surface
+    the agent needs to write meaningful bullets."""
+    (tmp_path / "PLAN_OPTIONS.md").write_text("plan for options engine")
+    (tmp_path / "ARCHITECTURE.md").write_text("the system shape")
+    output = scan_project(tmp_path)
+    assert "### PLAN_OPTIONS.md" in output
+    assert "plan for options engine" in output
+    assert "### ARCHITECTURE.md" in output
+
+
+def test_scan_respects_docs_max_depth(tmp_path: Path) -> None:
+    """A doc nested deeper than ``max_depth`` is NOT pulled."""
+    deep_dir = tmp_path / "a" / "b" / "c"
+    deep_dir.mkdir(parents=True)
+    (deep_dir / "README.md").write_text("too deep")
+    output = scan_project(tmp_path, docs_max_depth=1)
+    assert "too deep" not in output
+
+
+def test_scan_caps_docs_total_budget(tmp_path: Path) -> None:
+    """When the cumulative doc bytes exceed the total cap, later docs
+    get skipped with a budget-hit marker."""
+    # Two big docs; first eats the whole budget, second should be skipped.
+    (tmp_path / "README.md").write_text("a" * 6000)
+    (tmp_path / "PLAN_X.md").write_text("b" * 6000)
+    output = scan_project(tmp_path, per_doc_max_chars=6000, docs_total_max_chars=4000)
+    # The total cap fires either as the "more doc(s) skipped" marker or as
+    # mid-doc truncation depending on which path the budget hits.
+    assert "scan budget" in output or "total budget hit" in output
 
 
 # -- Structure section -----------------------------------------------------
