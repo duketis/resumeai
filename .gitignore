@@ -92,3 +92,5 @@ resumeai/api/static/
 # Session-context anchor — local-only, never committed.
 CLAUDE.md
 _docker_claude/
+runs/
+.DS_Store

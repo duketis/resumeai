@@ -6,13 +6,21 @@ services:
     restart: unless-stopped
     ports:
       - "8765:8765"
+    env_file:
+      # Holds CLAUDE_CODE_OAUTH_TOKEN -- the long-lived Max-subscription
+      # token generated once via ``claude setup-token`` on the host.
+      # Gitignored. See README/CLAUDE.md for the one-time setup flow.
+      - .env
+    environment:
+      # The ``claude`` CLI inside the container reads this env var as its
+      # auth source -- no keychain, no OAuth refresh, no expiry. Same Max
+      # subscription as the host. Mirrors the algo/dashboard pattern.
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
     volumes:
       # Per-run rendered outputs on the host. The orchestrator + the
       # /runs/<id>/pdf route both resolve ``runs/<run_id>/...`` relative
       # to the process cwd (= /app inside the container), so the mount
-      # target MUST be ``/app/runs`` -- mounting somewhere else
-      # silently puts PDFs in an unbind-mounted spot and the download
-      # route 404s.
+      # target MUST be ``/app/runs``.
       - ./runs:/app/runs
       # The candidate's context tree (resume.yaml, work_history/, projects/,
       # master-resume.txt, Resume*.tex). The orchestrator reads it via
@@ -21,12 +29,5 @@ services:
       - ./UserContext:/app/UserContext
       # The SQLite database that holds Settings + Run history + Context-pool
       # uploads. Bind-mounting the host's ``~/.resumeai/`` so the container
-      # shares the SAME database the user already has on their Mac --
-      # otherwise the context pool the user uploaded pre-Docker looks empty.
+      # shares the SAME database the user already has on their Mac.
       - ${HOME}/.resumeai:/root/.resumeai
-
-      # Claude CLI auth. The host keychain isn't readable from the container,
-      # so we project the OAuth token into a file the CLI reads on startup.
-      # Run ``./Tools/export-claude-credentials.sh`` once before
-      # ``docker compose up`` to populate ./_docker_claude/.credentials.json.
-      - ./_docker_claude:/root/.claude
