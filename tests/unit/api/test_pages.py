@@ -171,6 +171,54 @@ def test_settings_page_renders(client: TestClient) -> None:
     assert "default.tex.j2" in response.text
 
 
+def test_rerun_creates_new_run_with_same_request_and_redirects(
+    client: TestClient,
+    runs: InMemoryRunsStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``POST /runs/<id>/rerun`` clones the original ``TailorRequest`` into
+    a new run and 303s to the new run-detail page."""
+    when = datetime(2026, 5, 11, tzinfo=UTC)
+    runs.save(
+        Run(
+            id="run_orig",
+            request=TailorRequest(jd_url="https://example.com/job/42"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+    )
+
+    async def fake_execute(self: object, run_id: str) -> Run:
+        return Run(
+            id=run_id,
+            request=TailorRequest(jd_url="https://example.com/job/42"),
+            status=RunStatus.SUCCEEDED,
+            created_at=when,
+            updated_at=when,
+        )
+
+    monkeypatch.setattr(
+        "resumeai.runs.orchestrator.TailoringOrchestrator.execute",
+        fake_execute,
+    )
+
+    response = client.post("/runs/run_orig/rerun", follow_redirects=False)
+    assert response.status_code == 303
+    location = response.headers["location"]
+    assert location.startswith("/runs/run_")
+    new_id = location.removeprefix("/runs/")
+    assert new_id != "run_orig"
+    new_run = runs.get(new_id)
+    assert new_run is not None
+    assert new_run.request.jd_url == "https://example.com/job/42"
+
+
+def test_rerun_404_when_original_run_unknown(client: TestClient) -> None:
+    response = client.post("/runs/run_nope/rerun", follow_redirects=False)
+    assert response.status_code == 404
+
+
 def test_runs_page_renders_with_flash_query_param(client: TestClient) -> None:
     response = client.get("/runs?flash=Hello+world")
     assert response.status_code == 200

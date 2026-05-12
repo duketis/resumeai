@@ -99,6 +99,28 @@ def clear_runs(
     return RedirectResponse(f"/runs?flash=Cleared+{deleted}+run(s)", status_code=303)
 
 
+@router.post("/runs/{run_id}/rerun", include_in_schema=False)
+async def rerun(
+    run_id: str,
+    runs: RunsStore = Depends(get_runs_store),
+    orchestrator: TailoringOrchestrator = Depends(get_orchestrator),
+) -> RedirectResponse:
+    """Kick off a new run with the same ``TailorRequest`` as ``run_id``.
+
+    Useful when a previous render was lost (e.g. PDFs wiped during a
+    Docker volume reshuffle) or when the candidate's context has been
+    updated since the original run and we want to see the difference.
+    """
+    original = runs.get(run_id)
+    if original is None:
+        raise HTTPException(status_code=404, detail=f"unknown run {run_id!r}")
+    new_run = orchestrator.create_run(original.request)
+    task: asyncio.Task[object] = asyncio.create_task(orchestrator.execute(new_run.id))
+    _BACKGROUND_TASKS.add(task)
+    task.add_done_callback(_BACKGROUND_TASKS.discard)
+    return RedirectResponse(f"/runs/{new_run.id}", status_code=303)
+
+
 @router.get("/runs/{run_id}", response_class=HTMLResponse)
 def run_detail_page(
     run_id: str,

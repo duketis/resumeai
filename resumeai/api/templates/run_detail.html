@@ -112,6 +112,12 @@
 </div>
 {% endif %}
 
-<p><a class="button secondary" href="/runs">← All runs</a> <a class="button" href="/tailor">New run</a></p>
+<p>
+  <a class="button secondary" href="/runs">← All runs</a>
+  <a class="button" href="/tailor">New run</a>
+  <form method="post" action="/runs/{{ run.id }}/rerun" style="display: inline;">
+    <button type="submit" class="button">Re-run this JD</button>
+  </form>
+</p>
 
 {% endblock %}
