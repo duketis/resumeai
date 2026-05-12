@@ -16,6 +16,7 @@
 \usepackage{fancyhdr}
 \usepackage[english]{babel}
 \usepackage{tabularx}
+\usepackage{needspace} % \needspace forces a break when N lines below this point won't fit
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -128,10 +129,13 @@
 
 %----------EXPERIENCE----------
 \BLOCK{if resume.work_history}
+% ``\needspace`` forces a page break NOW if 8 baselines won't fit
+% below this point -- protects the section header + first entry from
+% getting orphaned at the bottom of a page with the rest of the
+% section on the next. ``\nopagebreak`` alone is a soft hint LaTeX
+% will override; ``needspace`` is a hard guarantee.
+\needspace{8\baselineskip}
 \section{Professional Experience}
-% Discourage a pagebreak immediately after the section header -- otherwise
-% the header sits orphaned at the bottom of one page with the first entry
-% on the next. ``\nopagebreak[4]`` is the strongest hint LaTeX accepts.
 \nopagebreak[4]
 \resumeSubHeadingListStart
 \BLOCK{for job in resume.work_history}
@@ -151,13 +155,13 @@
 
 %----------PERSONAL PROJECTS----------
 %
-% Uses ``\resumeSubheading`` (two-line) rather than the original single-line
-% ``\resumeProjectHeading`` so an arbitrary description + stack list never
-% overflows the page width. Top line: project name + clickable link (or
-% plain "Private project" label). Second line: description + stack as
-% italic subtitle. The hand-tailored SEEK template uses the single-line
-% form because the author hand-sized every field; an agent emitting
-% arbitrary content can't be trusted to stay within those tolerances.
+% Title row (name + link) sits in a tabular* sized to ``0.97\textwidth``.
+% The subtitle (description + stack) is OUTSIDE the tabular -- a regular
+% paragraph that wraps naturally. Putting the subtitle inside a
+% ``\resumeSubheading`` tabular lets a long stack list force the column
+% width past the page edge, clipping the right-column link
+% (``Private project`` showed as ``Privat``, ``github.com/duketis/jobai``
+% pressed against the page boundary). Wrapping subtitle = no overflow.
 \BLOCK{if resume.personal_projects}
 \section{Personal Projects}
 \resumeSubHeadingListStart
@@ -166,10 +170,12 @@
   \BLOCK{if project.link}\BLOCK{set right_col = '{\\small \\href{' ~ project.link ~ '}{' ~ (project.link_label or project.link) ~ '}}' }\BLOCK{elif project.link_label}\BLOCK{set right_col = '{\\small ' ~ project.link_label ~ '}' }\BLOCK{endif}
   \BLOCK{set subtitle_parts = [] }\#{}
   \BLOCK{if project.description}\BLOCK{set _ = subtitle_parts.append(project.description) }\BLOCK{endif}
-  \BLOCK{if project.stack}\BLOCK{set _ = subtitle_parts.append(project.stack) }\BLOCK{endif}
-  \resumeSubheading
-    {\VAR{project.name}}{\VAR{right_col}}
-    {\VAR{subtitle_parts | join(' $|$ ')}}{}
+  \BLOCK{if project.stack}\BLOCK{set _ = subtitle_parts.append('\\emph{' ~ project.stack ~ '}') }\BLOCK{endif}
+  \vspace{2pt}\item
+  \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+    \textbf{\VAR{project.name}} & \VAR{right_col} \\
+  \end{tabular*}
+  \BLOCK{if subtitle_parts}\\\textit{\small \VAR{subtitle_parts | join(' $|$ ')}}\BLOCK{endif}
   \BLOCK{if project.bullets}
   \resumeItemListStart
   \BLOCK{for bullet in project.bullets}

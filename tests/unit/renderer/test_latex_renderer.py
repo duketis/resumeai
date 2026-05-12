@@ -242,8 +242,8 @@ class TestRenderTex:
         assert r"\section{Personal Projects}" not in out
 
     def test_personal_projects_omits_description_when_empty(self) -> None:
-        """When description is blank the subtitle line collapses to just the
-        stack -- no leading ``" $|$ "`` separator from an empty join entry."""
+        """When description is blank the subtitle is just ``\\emph{stack}``
+        with no orphan ``" $|$ "`` separator."""
         tailored = TailoredResume(
             name="A",
             contact=Contact(email="a@b.co"),
@@ -257,12 +257,12 @@ class TestRenderTex:
             ),
         )
         out = render_tex(tailored)
-        # Name appears (bolded by the \resumeSubheading macro).
-        assert r"\resumeSubheading" in out
-        assert "Solo" in out
-        # Subtitle line is just the stack -- no orphan separator.
-        assert "{Python}{}" in out
-        assert "$|$ Python" not in out
+        # Name appears bolded inline (project rows use a bespoke title row,
+        # not the ``\resumeSubheading`` macro).
+        assert r"\textbf{Solo}" in out
+        # Subtitle is the stack only -- no orphan ``$|$`` separator.
+        assert r"\emph{Python}" in out
+        assert "$|$ \\emph{Python}" not in out
 
     def test_personal_project_without_link_or_label_has_empty_right_column(self) -> None:
         """``link`` AND ``link_label`` both None -> right column is literally
@@ -276,13 +276,10 @@ class TestRenderTex:
         # No project-specific \href (mailto:contact one is fine).
         assert "https://" not in out
         # No ``{\small \href...}`` or ``{\small <label>}`` wrapper since
-        # the project has neither a link nor a label to wrap. (Plain
-        # ``{\small`` does appear inside the ``\resumeSubheading`` macro
-        # definition in the preamble; we check the specific link-wrap forms.)
+        # the project has neither a link nor a label to wrap.
         assert r"{\small \href" not in out
-        # \resumeSubheading{X}{} -- the right column is literally empty.
-        assert r"\resumeSubheading" in out
-        assert "{X}{}" in out
+        # Title row is ``\textbf{X} & \\`` with the right cell empty.
+        assert r"\textbf{X} &  \\" in out
 
     def test_personal_project_with_link_but_no_label_uses_link_as_label(self) -> None:
         tailored = TailoredResume(
