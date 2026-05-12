@@ -12,11 +12,19 @@ TOOLS_DIR="${TOOLS_DIR:-/tmp/resumeai-tools}"
 
 cd "${REPO_ROOT}"
 
+SIBLING_CORE="${REPO_ROOT}/../ai-tailor-core"
+
 if [[ "${FORCE_REINSTALL:-0}" == "1" ]] || [[ ! -x "${TOOLS_DIR}/bin/ruff" ]]; then
   echo "[quality-gate] (re)building venv at ${TOOLS_DIR}"
   rm -rf "${TOOLS_DIR}"
   python3 -m venv "${TOOLS_DIR}"
   "${TOOLS_DIR}/bin/pip" install --quiet --upgrade pip
+  # Install ai-tailor-core editable from the sibling checkout first so pip
+  # sees the dep as already satisfied and skips the git+https fetch. Without
+  # this, pip would clone the published main branch and shadow local edits.
+  if [[ -d "${SIBLING_CORE}" ]]; then
+    "${TOOLS_DIR}/bin/pip" install --quiet -e "${SIBLING_CORE}"
+  fi
   "${TOOLS_DIR}/bin/pip" install --quiet -e ".[dev]"
 fi
 

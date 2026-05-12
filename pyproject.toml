@@ -24,6 +24,11 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  # ai-tailor-core holds the shared building blocks (LLM client, JD ingest,
+  # run orchestration, verifier scaffolding, user-context loader). Fetched
+  # from git on CI; the local quality gate installs an editable sibling
+  # checkout first so live development picks up local edits.
+  "ai-tailor-core @ git+https://github.com/duketis/ai-tailor-core.git@main",
   "httpx[http2]>=0.27,<1.0",
   "selectolax>=0.3.21",
   "pydantic>=2.5,<3.0",
