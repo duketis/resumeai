@@ -38,7 +38,7 @@ no preamble) matching this exact schema:
 
 {
   "name": "string — the candidate's name, copied verbatim",
-  "headline": "string — positioning line ≤15 words; experience + sectors, not a tech-stack list; no slashes, no '+' symbols",
+  "headline": "positioning sentence ≤15 words; experience + sectors; no slashes; no '+' symbols",
   "contact": {
     "email": "string — copied verbatim",
     "phone": "string or null — passthrough",
