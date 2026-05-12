@@ -38,7 +38,7 @@ no preamble) matching this exact schema:
 
 {
   "name": "string — the candidate's name, copied verbatim",
-  "headline": "string — short tailored line; may only name techs in the candidate's skills list",
+  "headline": "string — positioning line ≤15 words; experience + sectors, not a tech-stack list; no slashes, no '+' symbols",
   "contact": {
     "email": "string — copied verbatim",
     "phone": "string or null — passthrough",
@@ -138,6 +138,17 @@ Hard rules:
   permission to claim government experience -- only the candidate's actual
   client list is. If the candidate has worked at zero government clients,
   never use the word "government" in headline / summary / key_achievements.
+
+Headline shape:
+- The headline positions the candidate's experience + sector mix in a
+  normal sentence. Examples that work: "Full-stack engineer with five
+  years' consulting delivery across healthcare, finance and media",
+  "Senior backend engineer focused on AWS-native data platforms",
+  "Engineer-consultant with five years anchoring multi-tenant Rails
+  apps". Examples that DO NOT work: "TypeScript/React + Python on
+  AWS", "Python | FastAPI | React | AWS", "Full-stack — Python,
+  React, AWS". Never emit a slash-separated tech-stack list. Never
+  use "+" between techs. Techs live in the Skills section.
 - 4-7 bullets per work_history entry, descending importance.
 - Each bullet ≤25 words, action verb first, quantified where the source
   supports it.
