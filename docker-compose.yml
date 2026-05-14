@@ -46,3 +46,15 @@ services:
       # ``.md`` frontmatter sets ``local_path: <relative-folder>``.
       # Read-only -- nothing in resumeai writes to your other repos.
       - ${HOME}/Documents/personal:/host/personal:ro
+    # Attach to the shared ``ai-tailor-network`` so the jobai container
+    # (and its tailor + context proxy) can reach resumeai by name.
+    # Without this, ``docker compose up -d`` puts resumeai on its own
+    # default network and jobai's ``http://resumeai:8765`` DNS lookup
+    # fails with ``Name or service not known``.
+    networks:
+      - default
+
+networks:
+  default:
+    name: ai-tailor-network
+    external: true
