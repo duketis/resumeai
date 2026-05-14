@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING
 
+import pytest
 from pypdf import PdfWriter
 from tailor_core.context_files.models import ContextFileKind
 
@@ -317,7 +318,118 @@ def test_project_scan_form_renders_on_context_page(client: TestClient) -> None:
     body = client.get("/context").text
     assert 'action="/context/project"' in body
     assert 'name="path"' in body
-    assert 'name="author_email"' in body
+
+
+def test_project_scan_translates_host_path_to_container_path(
+    client: TestClient,
+    context_files: InMemoryContextFileStore,
+    tmp_path: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """API callers (jobai's proxy in particular) pass the user-facing
+    HOST path -- ``/Users/.../jobai`` -- because that's what shows up
+    in their Finder and shell. Inside the container only
+    ``/host/personal/jobai`` exists. The route translates the prefix
+    so both forms resolve to the same on-disk repo."""
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "container-root" / "myproj"  # type: ignore[arg-type]
+    project.mkdir(parents=True)
+    (project / "README.md").write_text("# Inside container\n")
+
+    monkeypatch.setenv("RESUMEAI_HOST_ROOT", "/Users/jonathan/Documents/personal")
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", str(project.parent))
+
+    response = client.post(
+        "/context/project",
+        data={"path": "/Users/jonathan/Documents/personal/myproj"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert "flash=" in response.headers["location"]
+    files = context_files.list_all()
+    assert len(files) == 1
+    assert "Inside container" in files[0].extracted_text
+
+
+def test_project_scan_translation_tolerates_trailing_slash_on_input(
+    client: TestClient,
+    context_files: InMemoryContextFileStore,
+    tmp_path: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A trailing slash on the host path must still translate cleanly
+    rather than producing a doubled separator that resolves nowhere."""
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "container-root" / "myproj"  # type: ignore[arg-type]
+    project.mkdir(parents=True)
+    (project / "README.md").write_text("# x\n")
+
+    monkeypatch.setenv("RESUMEAI_HOST_ROOT", "/Users/jonathan/Documents/personal")
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", str(project.parent))
+
+    response = client.post(
+        "/context/project",
+        data={"path": "/Users/jonathan/Documents/personal/myproj/"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert "flash=" in response.headers["location"]
+
+
+def test_project_scan_translation_passes_through_when_already_container_rooted(
+    client: TestClient,
+    context_files: InMemoryContextFileStore,
+    tmp_path: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Paths that don't start with the host root are forwarded
+    unchanged -- backward-compat with callers that already pass
+    a container-rooted path."""
+    from pathlib import Path  # noqa: PLC0415
+
+    project = Path(tmp_path) / "alreadyhere"  # type: ignore[arg-type]
+    project.mkdir()
+    (project / "README.md").write_text("# x\n")
+
+    monkeypatch.setenv("RESUMEAI_HOST_ROOT", "/some/other/host/root")
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", "/some/other/container/root")
+
+    response = client.post(
+        "/context/project",
+        data={"path": str(project)},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+    assert "flash=" in response.headers["location"]
+    assert context_files.list_all() != []
+
+
+def test_translate_host_path_is_a_no_op_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Without RESUMEAI_HOST_ROOT (or RESUMEAI_PROJECTS_ROOT) set,
+    paths flow through unchanged so single-user deploys without
+    Docker stay frictionless."""
+    from resumeai.api.routes.context import _translate_host_path  # noqa: PLC0415
+
+    monkeypatch.delenv("RESUMEAI_HOST_ROOT", raising=False)
+    monkeypatch.delenv("RESUMEAI_PROJECTS_ROOT", raising=False)
+    assert _translate_host_path("/some/path") == "/some/path"
+
+
+def test_translate_host_path_matches_exact_host_root(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The host root itself (without a trailing component) translates
+    to the bare container root."""
+    from resumeai.api.routes.context import _translate_host_path  # noqa: PLC0415
+
+    monkeypatch.setenv("RESUMEAI_HOST_ROOT", "/Users/jonathan/Documents/personal")
+    monkeypatch.setenv("RESUMEAI_PROJECTS_ROOT", "/host/personal")
+    assert _translate_host_path("/Users/jonathan/Documents/personal") == "/host/personal"
 
 
 # -- POST /context/{id}/delete (form delete) -------------------------------

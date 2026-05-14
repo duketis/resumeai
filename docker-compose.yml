@@ -20,6 +20,12 @@ services:
       # host directory below. ``local_path`` values in
       # ``UserContext/projects/<slug>.md`` resolve relative to this.
       - RESUMEAI_PROJECTS_ROOT=/host/personal
+      # Maps absolute host paths in API requests (the user-facing paths
+      # they see in Finder / their shell) to the in-container mount
+      # above. Without this, jobai's proxy posts
+      # ``/Users/jonathan/Documents/personal/jobai`` and the scanner
+      # 404s because that path doesn't exist inside the container.
+      - RESUMEAI_HOST_ROOT=${HOME}/Documents/personal
     volumes:
       # Per-run rendered outputs on the host. The orchestrator + the
       # /runs/<id>/pdf route both resolve ``runs/<run_id>/...`` relative

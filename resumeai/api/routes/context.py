@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
@@ -105,9 +106,16 @@ def add_local_project(
     path_clean = path.strip()
     if not path_clean:
         return RedirectResponse("/context?error=Project+path+is+required", status_code=303)
+    # Map host-side paths (the absolute paths the user types into the
+    # form / jobai forwards verbatim) to the container-side bind
+    # mount. Without this, ``/Users/jonathan/Documents/personal/jobai``
+    # 404s inside the container because the only mount is at
+    # ``/host/personal``. The translation is configured via env so
+    # operators with different mounts can adjust without code change.
+    resolved_path = _translate_host_path(path_clean)
     try:
         summary = scan_project(
-            path_clean,
+            resolved_path,
             name=name.strip() or None,
             author_email=author_email.strip() or None,
         )
@@ -172,3 +180,31 @@ def _serialise(file: object) -> dict[str, Any]:
 
     parsed: dict[str, Any] = json.loads(file.model_dump_json())  # type: ignore[attr-defined]
     return parsed
+
+
+def _translate_host_path(path: str) -> str:
+    """Map a host-absolute path to the in-container bind mount.
+
+    Operators configure two env vars in the deploy:
+
+    * ``RESUMEAI_HOST_ROOT`` -- the host-side prefix (e.g.
+      ``/Users/jonathan/Documents/personal``).
+    * ``RESUMEAI_PROJECTS_ROOT`` -- the container-side prefix (e.g.
+      ``/host/personal``).
+
+    When both are set AND the incoming path starts with the host
+    prefix, swap the prefix for the container one. Anything else
+    (path already container-rooted, no env vars set, partial match)
+    passes through unchanged so backward compatibility holds.
+    """
+    host_root = os.environ.get("RESUMEAI_HOST_ROOT", "").rstrip("/")
+    container_root = os.environ.get("RESUMEAI_PROJECTS_ROOT", "").rstrip("/")
+    if not host_root or not container_root:
+        return path
+    cleaned = path.rstrip("/") if path.endswith("/") and len(path) > 1 else path
+    if cleaned == host_root:
+        return container_root
+    prefix = host_root + "/"
+    if cleaned.startswith(prefix):
+        return container_root + "/" + cleaned[len(prefix) :]
+    return path
