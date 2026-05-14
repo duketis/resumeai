@@ -330,7 +330,9 @@ def test_project_scan_translates_host_path_to_container_path(
     HOST path -- ``/Users/.../jobai`` -- because that's what shows up
     in their Finder and shell. Inside the container only
     ``/host/personal/jobai`` exists. The route translates the prefix
-    so both forms resolve to the same on-disk repo."""
+    so both forms resolve to the same on-disk repo. The stored
+    ``PATH:`` header is rewritten back to the host path so callers
+    can find their own entries on later lookups."""
     from pathlib import Path  # noqa: PLC0415
 
     project = Path(tmp_path) / "container-root" / "myproj"  # type: ignore[arg-type]
@@ -351,6 +353,32 @@ def test_project_scan_translates_host_path_to_container_path(
     files = context_files.list_all()
     assert len(files) == 1
     assert "Inside container" in files[0].extracted_text
+    # The PATH header round-trips back to the host path -- not the
+    # container-side resolved one -- so callers can match their input
+    # against the stored entry.
+    assert "PATH: /Users/jonathan/Documents/personal/myproj" in files[0].extracted_text
+
+
+def test_rewrite_path_header_only_touches_the_path_line() -> None:
+    """Body content that happens to contain the resolved path
+    substring elsewhere isn't rewritten -- only the explicit
+    ``PATH:`` header is."""
+    from resumeai.api.routes.context import _rewrite_path_header  # noqa: PLC0415
+
+    summary = (
+        "PROJECT: x\n"
+        "PATH: /host/personal/x\n"
+        "\n"
+        "Some body mentioning /host/personal/x again, untouched.\n"
+    )
+    out = _rewrite_path_header(
+        summary,
+        "/host/personal/x",
+        "/Users/jonathan/Documents/personal/x",
+    )
+    assert "PATH: /Users/jonathan/Documents/personal/x" in out
+    # The non-header mention stays as-is (we only replace the first match).
+    assert "body mentioning /host/personal/x" in out
 
 
 def test_project_scan_translation_tolerates_trailing_slash_on_input(

@@ -121,6 +121,13 @@ def add_local_project(
         )
     except ScanError as exc:
         return RedirectResponse(f"/context?error=Could+not+scan+project%3A+{exc}", status_code=303)
+    # The scanner stamps the container-resolved path into the summary's
+    # ``PATH:`` header. Rewrite it back to the host path the caller
+    # passed in -- that's the path the user (and jobai's refresh
+    # lookup) knows about. Without this, jobai's path-based dedupe
+    # never finds a match and the entry can't be refreshed.
+    if resolved_path != path_clean:
+        summary = _rewrite_path_header(summary, resolved_path, path_clean)
     display_name = name.strip() or path_clean.rstrip("/").rsplit("/", 1)[-1] or path_clean
     base_tags = [t.strip() for t in tags.split(",") if t.strip()]
     if "source:local_project" not in base_tags:
@@ -180,6 +187,21 @@ def _serialise(file: object) -> dict[str, Any]:
 
     parsed: dict[str, Any] = json.loads(file.model_dump_json())  # type: ignore[attr-defined]
     return parsed
+
+
+def _rewrite_path_header(summary: str, resolved: str, original: str) -> str:
+    """Swap the container-resolved path in the scanner's ``PATH:`` line
+    back to the original host path the caller supplied.
+
+    The scanner stamps the resolved path into the summary header
+    because that's what ``Path(...).resolve()`` returns inside the
+    container. Callers (jobai's refresh lookup) recognise their own
+    host paths, not the bind-mount target -- so we rewrite the
+    header to what they sent us.
+    """
+    needle = f"PATH: {resolved}"
+    replacement = f"PATH: {original.rstrip('/')}"
+    return summary.replace(needle, replacement, 1)
 
 
 def _translate_host_path(path: str) -> str:
