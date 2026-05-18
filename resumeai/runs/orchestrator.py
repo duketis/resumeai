@@ -44,6 +44,13 @@ __all__ = [
 class TailoringOrchestrator(BaseOrchestrator[TailoredResume, RuntimeSettings]):
     """Resume-tailoring concrete orchestrator."""
 
+    def __init__(self, **kwargs: object) -> None:
+        # mypy can't infer the **kwargs forwarding precisely; we trust
+        # the base's signature and let the call propagate at runtime
+        # (same shim coverletterai's orchestrator uses).
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._verified_context: str | None = None
+
     def _tailor(
         self,
         requirements: JobRequirements,
@@ -51,6 +58,9 @@ class TailoringOrchestrator(BaseOrchestrator[TailoredResume, RuntimeSettings]):
         request: TailorRequest,
         context_files: tuple[ContextFile, ...],
     ) -> TailoredResume:
+        # Stash for the later verify hook (it receives only the
+        # TailoredResume); jobai supplies it on by-ref tailor requests.
+        self._verified_context = request.verified_context
         return tailor_resume(
             requirements,
             context,
@@ -74,7 +84,13 @@ class TailoringOrchestrator(BaseOrchestrator[TailoredResume, RuntimeSettings]):
         tailored: TailoredResume,
         pdf_path: Path,
     ) -> VerificationResult:
-        return verify_resume(requirements, tailored, self._llm, pdf_path=pdf_path)
+        return verify_resume(
+            requirements,
+            tailored,
+            self._llm,
+            pdf_path=pdf_path,
+            verified_context=self._verified_context,
+        )
 
     def _verify_visually(self, pdf_path: Path) -> VerificationResult | None:
         return verify_pdf_visually(pdf_path)

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tailor_core.verifier.deterministic import find_numeric_contradictions
 from tailor_core.verifier.scaffold import (
     VerifierError,
     check_pdf_length,
@@ -121,6 +122,7 @@ def verify_resume(
     *,
     model: str | None = None,
     pdf_path: Path | None = None,
+    verified_context: str | None = None,
 ) -> VerificationResult:
     """Run the QC pass and return a structured :class:`VerificationResult`.
 
@@ -129,6 +131,13 @@ def verify_resume(
     rendered output exceeds :data:`TARGET_MAX_PAGES`. This catches
     "agent wrote a great resume but the PDF is 4 pages" before the
     user opens Preview.
+
+    When ``verified_context`` is supplied we run the deterministic
+    numeric-claim fact-check over the structured resume and fold any
+    contradiction in as an ``error`` issue -- so a fabricated stat about
+    the candidate's own repos (eg an inflated test count) flips the
+    verdict to ``failed`` and is caught here rather than shipping
+    silently, exactly mirroring the cover-letter path.
     """
     user_prompt = build_verifier_prompt(jd, tailored)
     result = evaluate_judgement(
@@ -145,6 +154,8 @@ def verify_resume(
         )
         if length_issue is not None:
             result = merge_issue(result, length_issue)
+    for issue in find_numeric_contradictions(tailored.model_dump_json(), verified_context):
+        result = merge_issue(result, issue)
     return result
 
 

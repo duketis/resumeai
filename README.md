@@ -16,7 +16,7 @@ Given a job description (URL or paste-in):
 2. **Load your full career context** from `UserContext/`: `resume.yaml`, `work_history/*.md`, `projects/*.md`, `cover_letters/*.md`, `git_audit/*.md`. Each project entry gets enriched with a recursive scan of the underlying repo (READMEs, manifests, code stats, git log).
 3. **Run a Claude-powered tailoring agent** that emits a structured `TailoredResume` pydantic model. Headline + name + contact are verbatim passthroughs from `resume.yaml`; everything else is reshaped for the JD.
 4. **Render to PDF** by feeding the structured output through a Jinja2 LaTeX template and compiling with Tectonic. Layout is decoupled from content length — adding or removing a bullet rebuilds the document; it can never shove the layout around.
-5. **QC the output** with two passes: a text-mode LLM-judge call (catches fabrications, missing must-haves, weird tone, page-count overflow against the 3-page target) and a vision pass (rasterises every page and asks Claude for layout-only feedback — orphan lines, margin overflow, density issues).
+5. **QC the output** with three passes: a text-mode LLM-judge call (catches fabrications, missing must-haves, weird tone, page-count overflow against the 3-page target), a **deterministic numeric-claim fact-check** that folds in as a hard `error` when a metric figure contradicts the caller-supplied verified-facts block (no LLM — catches a hallucinated test/coverage/LOC stat the judge missed), and a vision pass (rasterises every page and asks Claude for layout-only feedback — orphan lines, margin overflow, density issues).
 
 ## Status
 
