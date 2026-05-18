@@ -44,12 +44,12 @@ __all__ = [
 class TailoringOrchestrator(BaseOrchestrator[TailoredResume, RuntimeSettings]):
     """Resume-tailoring concrete orchestrator."""
 
-    def __init__(self, **kwargs: object) -> None:
-        # mypy can't infer the **kwargs forwarding precisely; we trust
-        # the base's signature and let the call propagate at runtime
-        # (same shim coverletterai's orchestrator uses).
-        super().__init__(**kwargs)  # type: ignore[arg-type]
-        self._verified_context: str | None = None
+    # Caller-supplied ground-truth block, stashed by ``_tailor`` (which
+    # runs before ``_verify`` in the pipeline) so the verify hook -- which
+    # only receives the TailoredResume -- can feed it to the deterministic
+    # numeric check. Class-level default avoids an ``__init__`` override
+    # that would shadow the base's typed constructor signature.
+    _verified_context: str | None = None
 
     def _tailor(
         self,
